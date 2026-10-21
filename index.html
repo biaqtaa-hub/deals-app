@@ -114,6 +114,9 @@
   .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .price { font-size: 19px; font-weight: 800; }
   .old { color: var(--hint); text-decoration: line-through; font-size: 13px; font-weight: 500; margin-left: 4px; }
+  .real.win { color: #b07800; background: rgba(255, 196, 0, .16); }
+  html.dark .real.win { color: #ffc93d; }
+  .badge.gold { background: linear-gradient(135deg, #ffb300, #ff8a00); box-shadow: 0 3px 10px rgba(255,160,0,.35); }
   .real {
     align-self: flex-start; font-size: 12px; font-weight: 800; color: var(--green);
     background: color-mix(in srgb, var(--green) 14%, transparent); padding: 3px 8px; border-radius: 8px;
@@ -123,8 +126,8 @@
     -webkit-box-orient: vertical; overflow: hidden; max-height: 2.7em;
   }
   .open {
-    margin-top: auto; border-radius: 12px; padding: 10px; font-size: 14px; font-weight: 700;
-    background: var(--soft); color: var(--accent);
+    margin-top: auto; border-radius: 12px; padding: 10px 4px; font-size: 13px; font-weight: 700;
+    background: var(--soft); color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .more {
     display: block; margin: 0 12px 16px; width: calc(100% - 24px); border-radius: 16px; padding: 14px;
@@ -392,7 +395,7 @@ const $ = id => document.getElementById(id);
 const money = n => n.toLocaleString("ru-RU") + " ₽";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const tap = () => { try { tg.HapticFeedback.selectionChanged(); } catch (e) {} };
-const best = it => Math.max(it.d, it.r);
+const best = it => Math.max(it.d, it.r, it.v || 0);   // скидка продавца, реальное падение или выгода против других магазинов
 
 function list() {
   const words = st.q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -449,15 +452,22 @@ function drawActive() {
 }
 
 let shownList = [];
+function badge(it) {
+  const d = Math.max(it.d, it.r);
+  if (d > 0) return `<span class="badge">−${d}%</span>`;
+  if (it.v >= 10) return `<span class="badge gold">🏆 −${it.v}%</span>`;
+  return "";
+}
 function card(it, i) {
   const old = it.r >= 10 && it.u ? it.u : (it.o > it.p ? it.o : 0);
   return `<div class="card" data-idx="${i}">
     <div class="photo">${it.i ? `<img src="${esc(it.i)}" loading="lazy" alt="">` : ""}
-      ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}
+      ${badge(it)}
       <span class="shop ${shopOf(it)}">${SHOP_TAG[shopOf(it)] || ""}</span></div>
     <div class="body">
       <div class="price">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
       ${it.r >= 10 ? `<span class="real">✅ Реально −${it.r}%</span>` : ""}
+      ${it.v >= 10 ? `<span class="real win">🏆 Дешевле других на ${it.v}%</span>` : ""}
       ${(it.m || []).length ? `<div class="cmp">${it.m.map(m => `<button class="cmpi${m.p < it.p ? " cheaper" : ""}" data-alt="${esc(m.l)}">
           <span><span class="dot ${m.s}"></span>${SHOPS[m.s] || m.s}</span><span>${money(m.p)}${m.p < it.p ? " ✓" : ""}</span></button>`).join("")}</div>` : ""}
       <div class="name">${esc(it.n)}</div>
@@ -677,7 +687,7 @@ function openDetail(it) {
     .sort((a, b) => a.p - b.p).map(r => row(r.s, r.p, r.l, r.here, r.n)).join("");
   $("dbody").innerHTML = `
     <div class="dphoto">${it.i ? `<img src="${esc(it.i)}" alt="">` : ""}
-      ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}
+      ${badge(it)}
       <span class="shop ${here}">${SHOP_TAG[here] || ""}</span></div>
     <div class="dname">${esc(it.n)}</div>
     <div class="dprice">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
