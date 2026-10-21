@@ -102,6 +102,7 @@
   }
   .shop.ozon { background: #005bff; }
   .shop.wb { background: linear-gradient(135deg, #cb11ab, #7b2cbf); }
+  .shop.ym { background: #ffd21f; color: #1a1a1a; }
   .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .price { font-size: 19px; font-weight: 800; }
   .old { color: var(--hint); text-decoration: line-through; font-size: 13px; font-weight: 500; margin-left: 4px; }
@@ -133,7 +134,8 @@
     transform: translateY(105%); transition: transform .25s ease;
   }
   .open-sheet .shade, .open-wsheet .shade { opacity: 1; pointer-events: auto; }
-  .open-sheet #sheet, .open-wsheet #wsheet, .open-msheet #msheet { transform: none; }
+  .open-sheet #sheet, .open-wsheet #wsheet, .open-msheet #msheet, .open-dsheet #dsheet { transform: none; }
+  .open-dsheet .shade { opacity: 1; pointer-events: auto; }
   .open-msheet .shade { opacity: 1; pointer-events: auto; }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
   .sheet-head h2 { margin: 0; font-size: 20px; }
@@ -171,7 +173,7 @@
   }
   .cmpi.cheaper { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
   .cmpi .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; margin-right: 4px; display: inline-block; }
-  .dot.ozon { background: #005bff; } .dot.wb { background: #cb11ab; }
+  .dot.ozon { background: #005bff; } .dot.wb { background: #cb11ab; } .dot.ym { background: #ffc400; }
 
   /* ---------- кнопка и форма слежки ---------- */
   .watch-btn {
@@ -205,6 +207,29 @@
   .field input:focus { border-color: var(--accent); }
   .preview { background: var(--soft); border-radius: 13px; padding: 10px 12px; font-size: 13px; color: var(--hint); word-break: break-word; }
   .preview code { color: var(--text); font-family: inherit; font-weight: 600; }
+
+  /* ---------- карточка товара ---------- */
+  .dphoto { position: relative; background: #fff; border-radius: 18px; overflow: hidden; height: 170px; margin-bottom: 12px; }
+  .dphoto img { width: 100%; height: 100%; object-fit: contain; }
+  .dname { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .dprice { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  .dprice .old { font-size: 16px; }
+  .verdict { border-radius: 14px; padding: 12px 14px; font-weight: 800; font-size: 15px; margin: 6px 0 4px; }
+  .verdict.win { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+  .verdict.lose { background: color-mix(in srgb, #ffb020 22%, transparent); color: #c27c00; }
+  html.dark .verdict.lose { color: #ffc24d; }
+  .prow {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--soft);
+    border-radius: 14px; padding: 12px; margin-bottom: 8px; border: 2px solid transparent;
+  }
+  .prow.here { border-color: var(--accent); }
+  .prow .pn { flex: 1; font-weight: 700; font-size: 15px; }
+  .prow .pn small { display: block; font-weight: 500; font-size: 12px; color: var(--hint); }
+  .prow .pp { text-align: right; font-weight: 800; font-size: 16px; }
+  .prow .pp small { display: block; font-size: 12px; font-weight: 700; }
+  .up { color: var(--sale); } .down { color: var(--green); }
+  .prow .dot { width: 12px; height: 12px; flex: 0 0 12px; border-radius: 50%; display: inline-block; }
+  .nocmp { color: var(--hint); font-size: 14px; background: var(--soft); border-radius: 14px; padding: 12px; }
 
   /* ---------- окошко благодарности ---------- */
   .modal {
@@ -285,7 +310,7 @@
 <div class="sheet" id="wsheet">
   <div class="sheet-head"><h2>➕ Следить за товаром</h2><button class="x" id="wclose">✕</button></div>
   <div class="sheet-body">
-    <p style="margin:2px 0 14px;color:var(--hint);font-size:14px">Бот будет искать этот товар на Ozon и WB и пришлёт сообщение, когда цена сильно упадёт.</p>
+    <p style="margin:2px 0 14px;color:var(--hint);font-size:14px">Бот будет искать этот товар на Ozon, WB и Яндекс Маркете и пришлёт сообщение, когда цена сильно упадёт.</p>
     <label class="field"><b>Что ищем? *</b><span>Например: playstation 5, пылесос dyson</span>
       <input id="wq" placeholder="Название товара"></label>
     <label class="field"><b>Надо (необязательно)</b><span>Хотя бы одно из этих слов должно быть в названии. Через запятую.</span>
@@ -305,6 +330,12 @@
   <div class="sheet-foot" style="grid-template-columns:1fr">
     <button class="btn1 danger" id="mdel" disabled>Отметь, что удалить</button>
   </div>
+</div>
+
+<div class="sheet" id="dsheet">
+  <div class="sheet-head"><h2>Товар</h2><button class="x" id="dclose">✕</button></div>
+  <div class="sheet-body" id="dbody"></div>
+  <div class="sheet-foot" style="grid-template-columns:1fr"><button class="btn1" id="dopen">Открыть</button></div>
 </div>
 
 <div class="modal" id="modal">
@@ -333,8 +364,12 @@ if ((tg && tg.colorScheme === "dark") || (!tg && matchMedia("(prefers-color-sche
 const SORTS = [["popular", "⭐ Популярные"], ["cheap", "💰 Дешёвые"], ["expensive", "💎 Дорогие"],
                ["disc_big", "🔥 Большая скидка"], ["disc_small", "🏷 Маленькая скидка"], ["real_big", "✅ Сильнее упали"]];
 const DISCS = [[0, "Любая"], [20, "от 20%"], [50, "от 50%"], [70, "от 70%"]];
-const SHOPS = { ozon: "Ozon", wb: "WB" };
-const SHOP_OPTS = [["", "🛒 Все"], ["ozon", "🔵 Ozon"], ["wb", "🟣 Wildberries"]];
+const SHOPS = { ozon: "Ozon", wb: "WB", ym: "Маркет" };
+const SHOP_FULL = { ozon: "Ozon", wb: "Wildberries", ym: "Яндекс Маркет" };
+const SHOP_TAG = { ozon: "OZON", wb: "WB", ym: "МАРКЕТ" };
+const SHOP_IN = { ozon: "Ozon", wb: "WB", ym: "Маркете" };
+const SHOP_FULL_IN = { ozon: "Ozon", wb: "Wildberries", ym: "Яндекс Маркете" };
+const SHOP_OPTS = [["", "🛒 Все"], ["ozon", "🔵 Ozon"], ["wb", "🟣 Wildberries"], ["ym", "🟡 Яндекс Маркет"]];
 const shopOf = it => it.s || "ozon";
 const SHORT = { "Электроника": "Электроника", "Игры и приставки": "Игры", "Бытовая техника": "Техника",
                 "Детские товары": "Детям", "Товары для дома": "Для дома", "Слежки": "Мои слежки" };
@@ -394,19 +429,20 @@ function drawActive() {
   $("fcount").textContent = n;
 }
 
-function card(it) {
+let shownList = [];
+function card(it, i) {
   const old = it.r >= 10 && it.u ? it.u : (it.o > it.p ? it.o : 0);
-  return `<div class="card">
+  return `<div class="card" data-idx="${i}">
     <div class="photo">${it.i ? `<img src="${esc(it.i)}" loading="lazy" alt="">` : ""}
       ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}
-      <span class="shop ${shopOf(it)}">${shopOf(it) === "wb" ? "WB" : "OZON"}</span></div>
+      <span class="shop ${shopOf(it)}">${SHOP_TAG[shopOf(it)] || ""}</span></div>
     <div class="body">
       <div class="price">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
       ${it.r >= 10 ? `<span class="real">✅ Реально −${it.r}%</span>` : ""}
       ${(it.m || []).length ? `<div class="cmp">${it.m.map(m => `<button class="cmpi${m.p < it.p ? " cheaper" : ""}" data-alt="${esc(m.l)}">
           <span><span class="dot ${m.s}"></span>${SHOPS[m.s] || m.s}</span><span>${money(m.p)}${m.p < it.p ? " ✓" : ""}</span></button>`).join("")}</div>` : ""}
       <div class="name">${esc(it.n)}</div>
-      <button class="open" data-link="${esc(it.l)}">Открыть в ${SHOPS[shopOf(it)]}</button>
+      <button class="open" data-link="${esc(it.l)}">Открыть в ${SHOP_IN[shopOf(it)]}</button>
     </div>
   </div>`;
 }
@@ -415,7 +451,7 @@ function draw() {
   const l = list();
   drawCats(); drawActive();
   $("found").textContent = `Найдено товаров: ${l.length}`;
-  $("list").innerHTML = l.length ? l.slice(0, st.shown).map(card).join("")
+  $("list").innerHTML = l.length ? (shownList = l.slice(0, st.shown)).map(card).join("")
     : `<div class="empty"><div>🤷</div>Ничего не нашлось.<br>Попробуй другое слово или сбрось фильтры.</div>`;
   $("more").style.display = l.length > st.shown ? "block" : "none";
 }
@@ -442,7 +478,7 @@ function closeSheet() { document.body.classList.remove("open-sheet"); }
 
 $("fbtn").onclick = () => { tap(); openSheet(); };
 $("close").onclick = closeSheet;
-$("shade").onclick = () => { closeSheet(); document.body.classList.remove("open-wsheet", "open-msheet"); };
+$("shade").onclick = () => { closeSheet(); document.body.classList.remove("open-wsheet", "open-msheet", "open-dsheet"); };
 $("sortOpts").onclick = e => { const b = e.target.closest("[data-sort]"); if (!b) return; tap();
   draft.sort = draft.sort === b.dataset.sort ? "popular" : b.dataset.sort; drawSheet(); };
 $("shopOpts").onclick = e => { const b = e.target.closest("[data-shop]"); if (!b) return; tap();
@@ -590,13 +626,60 @@ function closeModal() { document.body.classList.remove("show-modal"); }
 $("go").onclick = () => { closeModal(); if (pendingLink) goTo(pendingLink); pendingLink = null; };
 $("shade").addEventListener("click", () => { if (document.body.classList.contains("show-modal")) { closeModal(); pendingLink = null; } });
 
-$("list").onclick = e => { const c = e.target.closest(".card"); if (!c) return;
-  const alt = e.target.closest("[data-alt]");
-  const link = alt ? alt.dataset.alt : c.querySelector(".open").dataset.link;
+function openShop(link) {
   if (thanksShown) return goTo(link);
   markThanks(); pendingLink = link;
   $("copy").textContent = "📋 Скопировать номер";
-  document.body.classList.add("show-modal"); };
+  document.body.classList.add("show-modal");
+}
+
+/* ---------- карточка товара со сравнением цен ---------- */
+let dItem = null;
+function openDetail(it) {
+  dItem = it;
+  const here = shopOf(it);
+  const others = (it.m || []).slice().sort((a, b) => a.p - b.p);
+  const cheaper = others.filter(m => m.p < it.p);
+  const old = it.r >= 10 && it.u ? it.u : (it.o > it.p ? it.o : 0);
+  let verdict = "";
+  if (others.length && !cheaper.length)
+    verdict = `<div class="verdict win">🏆 Здесь дешевле всего! Экономия до ${money(Math.max(...others.map(m => m.p)) - it.p)}</div>`;
+  else if (cheaper.length)
+    verdict = `<div class="verdict lose">💡 В ${SHOP_FULL_IN[cheaper[0].s]} дешевле на ${money(it.p - cheaper[0].p)}</div>`;
+  const row = (s, p, link, isHere) => {
+    const diff = p - it.p;
+    const note = isHere ? `<small>этот товар</small>` : (diff > 0 ? `<small class="up">+${money(diff)} дороже</small>`
+                 : diff < 0 ? `<small class="down">−${money(-diff)} дешевле</small>` : `<small>та же цена</small>`);
+    return `<button class="prow${isHere ? " here" : ""}" data-go="${esc(link)}">
+      <span class="dot ${s}"></span><span class="pn">${SHOP_FULL[s] || s}${isHere ? "<small>вы смотрите здесь</small>" : "<small>похожий товар</small>"}</span>
+      <span class="pp">${money(p)}${note}</span></button>`;
+  };
+  const rows = [{ s: here, p: it.p, l: it.l, here: true }, ...others.map(m => ({ s: m.s, p: m.p, l: m.l, here: false }))]
+    .sort((a, b) => a.p - b.p).map(r => row(r.s, r.p, r.l, r.here)).join("");
+  $("dbody").innerHTML = `
+    <div class="dphoto">${it.i ? `<img src="${esc(it.i)}" alt="">` : ""}
+      ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}
+      <span class="shop ${here}">${SHOP_TAG[here] || ""}</span></div>
+    <div class="dname">${esc(it.n)}</div>
+    <div class="dprice">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
+    ${it.r >= 10 ? `<span class="real">✅ Бот видел: цена реально упала на ${it.r}%</span>` : ""}
+    ${verdict}
+    <div class="sec">Цены в магазинах</div>
+    ${others.length ? rows : `<div class="nocmp">🔎 Такой же товар в других магазинах пока не нашёлся.</div>`}`;
+  $("dopen").textContent = `Открыть в ${SHOP_FULL_IN[here]} →`;
+  document.body.classList.add("open-dsheet");
+}
+const closeDetail = () => document.body.classList.remove("open-dsheet");
+$("dclose").onclick = closeDetail;
+$("dopen").onclick = () => { if (dItem) { closeDetail(); openShop(dItem.l); } };
+$("dbody").onclick = e => { const b = e.target.closest("[data-go]"); if (!b) return; closeDetail(); openShop(b.dataset.go); };
+
+$("list").onclick = e => { const c = e.target.closest(".card"); if (!c) return;
+  const alt = e.target.closest("[data-alt]");
+  if (alt) return openShop(alt.dataset.alt);
+  if (e.target.closest(".open")) return openShop(e.target.closest(".open").dataset.link);
+  const it = shownList[+c.dataset.idx];
+  if (it) { tap(); openDetail(it); } };
 $("more").onclick = () => { st.shown += PAGE; draw(); };
 let t;
 $("q").oninput = e => { clearTimeout(t); t = setTimeout(() => { st.q = e.target.value; st.shown = PAGE; draw(); }, 250); };
