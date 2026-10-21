@@ -96,6 +96,12 @@
     padding: 4px 9px; border-radius: 10px; background: linear-gradient(135deg, #ff4d7d, #ff7a45);
     box-shadow: 0 3px 10px rgba(255,77,125,.35);
   }
+  .shop {
+    position: absolute; right: 8px; top: 8px; color: #fff; font-weight: 800; font-size: 11px;
+    padding: 3px 7px; border-radius: 8px; letter-spacing: .3px;
+  }
+  .shop.ozon { background: #005bff; }
+  .shop.wb { background: linear-gradient(135deg, #cb11ab, #7b2cbf); }
   .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .price { font-size: 19px; font-weight: 800; }
   .old { color: var(--hint); text-decoration: line-through; font-size: 13px; font-weight: 500; margin-left: 4px; }
@@ -199,6 +205,8 @@
   <div class="sheet-body">
     <div class="sec">Сначала показывать</div>
     <div class="opts" id="sortOpts"></div>
+    <div class="sec">Магазин</div>
+    <div class="opts" id="shopOpts"></div>
     <div class="sec">Скидка</div>
     <div class="opts" id="discOpts"></div>
     <div class="sec">Цена, ₽</div>
@@ -227,7 +235,7 @@
     <p>Если хотите отблагодарить меня, всегда рад пожертвованиям</p>
     <div class="phone"><span id="phone"></span><small id="bank"></small></div>
     <button class="copy" id="copy">📋 Скопировать номер</button>
-    <button class="go" id="go">Перейти в Ozon →</button>
+    <button class="go" id="go">Перейти в магазин →</button>
   </div>
 </div>
 
@@ -244,10 +252,13 @@ if ((tg && tg.colorScheme === "dark") || (!tg && matchMedia("(prefers-color-sche
 const SORTS = [["popular", "⭐ Популярные"], ["cheap", "💰 Дешёвые"], ["expensive", "💎 Дорогие"],
                ["disc_big", "🔥 Большая скидка"], ["disc_small", "🏷 Маленькая скидка"], ["real_big", "✅ Сильнее упали"]];
 const DISCS = [[0, "Любая"], [20, "от 20%"], [50, "от 50%"], [70, "от 70%"]];
+const SHOPS = { ozon: "Ozon", wb: "WB" };
+const SHOP_OPTS = [["", "🛒 Все"], ["ozon", "🔵 Ozon"], ["wb", "🟣 Wildberries"]];
+const shopOf = it => it.s || "ozon";
 const SHORT = { "Электроника": "Электроника", "Игры и приставки": "Игры", "Бытовая техника": "Техника",
                 "Детские товары": "Детям", "Товары для дома": "Для дома", "Слежки": "Мои слежки" };
 const PAGE = 40;
-const fresh = () => ({ cat: null, sort: "popular", disc: 0, pmin: 0, pmax: 0, real: false, q: "", shown: PAGE });
+const fresh = () => ({ cat: null, shop: "", sort: "popular", disc: 0, pmin: 0, pmax: 0, real: false, q: "", shown: PAGE });
 let all = [], cats = [], st = fresh();
 
 const $ = id => document.getElementById(id);
@@ -260,6 +271,7 @@ function list() {
   const words = st.q.toLowerCase().split(/\s+/).filter(Boolean);
   const out = all.filter(it =>
     (!st.cat || it.c === st.cat) &&
+    (!st.shop || shopOf(it) === st.shop) &&
     (!st.disc || best(it) >= st.disc) &&
     (!st.pmin || it.p >= st.pmin) &&
     (!st.pmax || it.p <= st.pmax) &&
@@ -277,7 +289,7 @@ function list() {
 }
 
 function filterCount() {
-  return (st.sort !== "popular") + (st.disc > 0) + (st.pmin > 0 || st.pmax > 0) + st.real;
+  return (st.sort !== "popular") + !!st.shop + (st.disc > 0) + (st.pmin > 0 || st.pmax > 0) + st.real;
 }
 
 function drawCats() {
@@ -291,6 +303,7 @@ function drawCats() {
 function drawActive() {
   const t = [];
   if (st.sort !== "popular") t.push(["sort", SORTS.find(s => s[0] === st.sort)[1]]);
+  if (st.shop) t.push(["shop", SHOP_OPTS.find(s => s[0] === st.shop)[1]]);
   if (st.disc) t.push(["disc", `Скидка от ${st.disc}%`]);
   if (st.pmin || st.pmax) t.push(["price", st.pmin && st.pmax ? `${money(st.pmin)} – ${money(st.pmax)}` : st.pmax ? `До ${money(st.pmax)}` : `От ${money(st.pmin)}`]);
   if (st.real) t.push(["real", "✅ Только реальные"]);
@@ -304,12 +317,13 @@ function card(it) {
   const old = it.r >= 10 && it.u ? it.u : (it.o > it.p ? it.o : 0);
   return `<div class="card">
     <div class="photo">${it.i ? `<img src="${esc(it.i)}" loading="lazy" alt="">` : ""}
-      ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}</div>
+      ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}
+      <span class="shop ${shopOf(it)}">${shopOf(it) === "wb" ? "WB" : "OZON"}</span></div>
     <div class="body">
       <div class="price">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
       ${it.r >= 10 ? `<span class="real">✅ Реально −${it.r}%</span>` : ""}
       <div class="name">${esc(it.n)}</div>
-      <button class="open" data-link="${esc(it.l)}">Открыть в Ozon</button>
+      <button class="open" data-link="${esc(it.l)}">Открыть в ${SHOPS[shopOf(it)]}</button>
     </div>
   </div>`;
 }
@@ -328,6 +342,8 @@ let draft;
 function drawSheet() {
   $("sortOpts").innerHTML = SORTS.map(([k, label]) =>
     `<button class="opt${draft.sort === k ? " on" : ""}" data-sort="${k}">${label}</button>`).join("");
+  $("shopOpts").innerHTML = SHOP_OPTS.map(([k, label]) =>
+    `<button class="opt${draft.shop === k ? " on" : ""}" data-shop="${k}">${label}</button>`).join("");
   $("discOpts").innerHTML = DISCS.map(([v, label]) =>
     `<button class="opt${draft.disc === v ? " on" : ""}" data-disc="${v}">${label}</button>`).join("");
   $("realSw").className = "switch" + (draft.real ? " on" : "");
@@ -346,6 +362,8 @@ $("close").onclick = closeSheet;
 $("shade").onclick = closeSheet;
 $("sortOpts").onclick = e => { const b = e.target.closest("[data-sort]"); if (!b) return; tap();
   draft.sort = draft.sort === b.dataset.sort ? "popular" : b.dataset.sort; drawSheet(); };
+$("shopOpts").onclick = e => { const b = e.target.closest("[data-shop]"); if (!b) return; tap();
+  draft.shop = draft.shop === b.dataset.shop ? "" : b.dataset.shop; drawSheet(); };
 $("discOpts").onclick = e => { const b = e.target.closest("[data-disc]"); if (!b) return; tap();
   const v = +b.dataset.disc; draft.disc = draft.disc === v ? 0 : v; drawSheet(); };
 $("realSw").onclick = () => { tap(); draft.real = !draft.real; drawSheet(); };
@@ -360,7 +378,7 @@ $("cats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) ret
   st.cat = st.cat === b.dataset.cat ? null : b.dataset.cat; st.shown = PAGE; draw(); };
 $("active").onclick = e => { const b = e.target.closest("[data-off]"); if (!b) return; tap();
   const k = b.dataset.off;
-  if (k === "sort") st.sort = "popular"; if (k === "disc") st.disc = 0;
+  if (k === "sort") st.sort = "popular"; if (k === "disc") st.disc = 0; if (k === "shop") st.shop = "";
   if (k === "price") { st.pmin = 0; st.pmax = 0; } if (k === "real") st.real = false;
   st.shown = PAGE; draw(); };
 /* ---------- переход в Ozon + благодарность один раз ---------- */
