@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Скидки</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --bg2: var(--tg-theme-secondary-bg-color, #f2f3f5);
+    --text: var(--tg-theme-text-color, #111111);
+    --hint: var(--tg-theme-hint-color, #8a8a8e);
+    --accent: var(--tg-theme-button-color, #2481cc);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --green: #1f9d55;
+    --red: #e5484d;
+    --orange: #f08c00;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg2); color: var(--text);
+    font: 17px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  .top {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: 12px 16px 10px; box-shadow: 0 1px 0 rgba(0,0,0,.08);
+  }
+  .search {
+    width: 100%; font-size: 18px; padding: 13px 14px; border-radius: 14px;
+    border: 2px solid var(--bg2); background: var(--bg2); color: var(--text); outline: none;
+  }
+  .search:focus { border-color: var(--accent); }
+  .row { display: flex; gap: 8px; overflow-x: auto; padding-top: 10px; scrollbar-width: none; }
+  .row::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto; border: 0; border-radius: 20px; padding: 10px 14px;
+    font-size: 16px; background: var(--bg2); color: var(--text); cursor: pointer;
+  }
+  .chip.on { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  .filters { display: flex; gap: 8px; padding-top: 10px; align-items: center; flex-wrap: wrap; }
+  .price-to {
+    display: flex; align-items: center; gap: 6px; background: var(--bg2);
+    border-radius: 20px; padding: 0 12px; font-size: 16px;
+  }
+  .price-to input {
+    width: 90px; border: 0; background: transparent; color: var(--text);
+    font-size: 16px; padding: 10px 0; outline: none;
+  }
+  .info { color: var(--hint); font-size: 14px; padding: 10px 16px 4px; }
+  .list { padding: 6px 12px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: var(--bg); border-radius: 16px; padding: 12px; display: flex; gap: 12px;
+  }
+  .pic {
+    width: 96px; height: 96px; flex: 0 0 96px; border-radius: 12px; background: #fff;
+    object-fit: contain;
+  }
+  .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .name {
+    font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .price { font-size: 22px; font-weight: 700; }
+  .old { color: var(--hint); text-decoration: line-through; font-size: 15px; font-weight: 400; margin-left: 6px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 13px; padding: 3px 8px; border-radius: 8px; font-weight: 600; }
+  .tag.seller { background: rgba(240,140,0,.15); color: var(--orange); }
+  .tag.real { background: rgba(31,157,85,.15); color: var(--green); }
+  .tag.hot { background: rgba(229,72,77,.15); color: var(--red); }
+  .open {
+    margin-top: 2px; border: 0; border-radius: 12px; padding: 11px; font-size: 16px; font-weight: 600;
+    background: var(--accent); color: var(--accent-text); cursor: pointer; width: 100%;
+  }
+  .more {
+    margin: 4px 12px 30px; width: calc(100% - 24px); border: 0; border-radius: 14px; padding: 14px;
+    font-size: 17px; background: var(--bg); color: var(--accent); font-weight: 600; cursor: pointer;
+  }
+  .empty { text-align: center; color: var(--hint); padding: 40px 24px; font-size: 17px; }
+</style>
+</head>
+<body>
+<div class="top">
+  <input id="q" class="search" type="search" placeholder="🔍 Что ищем? Например: пылесос">
+  <div id="cats" class="row"></div>
+  <div class="filters">
+    <div id="sorts" class="row" style="padding-top:0"></div>
+  </div>
+  <div class="filters">
+    <label class="price-to">Цена до <input id="max" type="number" inputmode="numeric" placeholder="любая"> ₽</label>
+    <button id="real" class="chip">✅ Только реальные скидки</button>
+  </div>
+</div>
+<div id="info" class="info">Загружаю товары…</div>
+<div id="list" class="list"></div>
+<button id="more" class="more" style="display:none">Показать ещё</button>
+
+<script>
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const SORTS = [
+  ["popular", "⭐ Популярные"],
+  ["cheap", "💰 Сначала дешёвые"],
+  ["discount", "🔥 Самая большая скидка"],
+];
+const PAGE = 40;
+let all = [], cats = [];
+let state = { cat: "Все", sort: "popular", real: false, q: "", max: 0, shown: PAGE };
+
+const $ = id => document.getElementById(id);
+const money = n => n.toLocaleString("ru-RU") + " ₽";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function chips(box, items, current, onPick) {
+  box.innerHTML = "";
+  items.forEach(([key, label]) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (key === current ? " on" : "");
+    b.textContent = label;
+    b.onclick = () => onPick(key);
+    box.appendChild(b);
+  });
+}
+
+function drawControls() {
+  chips($("cats"), [["Все", "🏷 Все"], ...cats.map(c => [c, c])], state.cat,
+        k => { state.cat = k; state.shown = PAGE; drawControls(); draw(); });
+  chips($("sorts"), SORTS, state.sort,
+        k => { state.sort = k; state.shown = PAGE; drawControls(); draw(); });
+  $("real").className = "chip" + (state.real ? " on" : "");
+}
+
+function filtered() {
+  const words = state.q.toLowerCase().split(/\s+/).filter(Boolean);
+  let list = all.filter(it =>
+    (state.cat === "Все" || it.c === state.cat) &&
+    (!state.max || it.p <= state.max) &&
+    (!state.real || it.r >= 10) &&
+    words.every(w => it.n.toLowerCase().includes(w)));
+  const best = it => Math.max(it.d, it.r);
+  if (state.sort === "cheap") list.sort((a, b) => a.p - b.p);
+  else if (state.sort === "discount") list.sort((a, b) => (state.real ? b.r - a.r : best(b) - best(a)));
+  else list.sort((a, b) => a.k - b.k);
+  return list;
+}
+
+function card(it) {
+  const tags = [];
+  if (it.r >= 40) tags.push(`<span class="tag hot">🚨 Цена упала на ${it.r}%</span>`);
+  else if (it.r >= 10) tags.push(`<span class="tag real">✅ Реально −${it.r}%</span>`);
+  if (it.d > 0) tags.push(`<span class="tag seller">−${it.d}% по словам продавца</span>`);
+  const old = it.u && it.r >= 10 ? it.u : (it.o > it.p ? it.o : 0);
+  return `<div class="card">
+    ${it.i ? `<img class="pic" src="${esc(it.i)}" loading="lazy" alt="">` : `<div class="pic"></div>`}
+    <div class="body">
+      <div class="name">${esc(it.n)}</div>
+      <div class="price">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
+      <div class="tags">${tags.join("")}</div>
+      <button class="open" data-link="${esc(it.l)}">Открыть в Ozon</button>
+    </div>
+  </div>`;
+}
+
+function draw() {
+  const list = filtered();
+  $("list").innerHTML = list.length
+    ? list.slice(0, state.shown).map(card).join("")
+    : `<div class="empty">Ничего не нашлось 🤷<br>Попробуй другое слово или убери фильтры</div>`;
+  $("more").style.display = list.length > state.shown ? "block" : "none";
+  $("info").textContent = `Найдено: ${list.length} · обновлено ${updated}`;
+}
+
+let updated = "";
+$("list").addEventListener("click", e => {
+  const b = e.target.closest(".open");
+  if (!b) return;
+  if (tg && tg.openLink) tg.openLink(b.dataset.link); else window.open(b.dataset.link, "_blank");
+});
+$("more").onclick = () => { state.shown += PAGE; draw(); };
+$("real").onclick = () => { state.real = !state.real; state.shown = PAGE; drawControls(); draw(); };
+let t;
+$("q").oninput = e => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value; state.shown = PAGE; draw(); }, 250); };
+$("max").oninput = e => { state.max = parseInt(e.target.value) || 0; state.shown = PAGE; draw(); };
+
+fetch("data.json?t=" + Date.now())
+  .then(r => r.json())
+  .then(d => { all = d.items || []; cats = d.cats || []; updated = d.updated || ""; drawControls(); draw(); })
+  .catch(() => { $("info").textContent = ""; $("list").innerHTML =
+    `<div class="empty">Товаров пока нет 😴<br>Бот ещё собирает скидки, загляни через полчаса</div>`; });
+drawControls();
+</script>
+</body>
+</html>
