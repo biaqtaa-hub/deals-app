@@ -232,7 +232,9 @@
   }
   .prow.here { border-color: var(--accent); }
   .prow .pn { flex: 1; font-weight: 700; font-size: 15px; }
+  .prow .pn { min-width: 0; }
   .prow .pn small { display: block; font-weight: 500; font-size: 12px; color: var(--hint); }
+  .prow .pn small.mname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .prow .pp { text-align: right; font-weight: 800; font-size: 16px; }
   .prow .pp small { display: block; font-size: 12px; font-weight: 700; }
   .up { color: var(--sale); } .down { color: var(--green); }
@@ -663,16 +665,16 @@ function openDetail(it) {
     verdict = `<div class="verdict win">🏆 Здесь дешевле всего! Экономия до ${money(Math.max(...others.map(m => m.p)) - it.p)}</div>`;
   else if (cheaper.length)
     verdict = `<div class="verdict lose">💡 В ${SHOP_FULL_IN[cheaper[0].s]} дешевле на ${money(it.p - cheaper[0].p)}</div>`;
-  const row = (s, p, link, isHere) => {
+  const row = (s, p, link, isHere, name) => {
     const diff = p - it.p;
     const note = isHere ? `<small>этот товар</small>` : (diff > 0 ? `<small class="up">+${money(diff)} дороже</small>`
                  : diff < 0 ? `<small class="down">−${money(-diff)} дешевле</small>` : `<small>та же цена</small>`);
     return `<button class="prow${isHere ? " here" : ""}" data-go="${esc(link)}">
-      <span class="dot ${s}"></span><span class="pn">${SHOP_FULL[s] || s}${isHere ? "<small>вы смотрите здесь</small>" : "<small>похожий товар</small>"}</span>
+      <span class="dot ${s}"></span><span class="pn">${SHOP_FULL[s] || s}${isHere ? "<small>вы смотрите здесь</small>" : `<small class="mname">${esc(name || "такой же товар")}</small>`}</span>
       <span class="pp">${money(p)}${note}</span></button>`;
   };
-  const rows = [{ s: here, p: it.p, l: it.l, here: true }, ...others.map(m => ({ s: m.s, p: m.p, l: m.l, here: false }))]
-    .sort((a, b) => a.p - b.p).map(r => row(r.s, r.p, r.l, r.here)).join("");
+  const rows = [{ s: here, p: it.p, l: it.l, here: true }, ...others.map(m => ({ s: m.s, p: m.p, l: m.l, here: false, n: m.n }))]
+    .sort((a, b) => a.p - b.p).map(r => row(r.s, r.p, r.l, r.here, r.n)).join("");
   $("dbody").innerHTML = `
     <div class="dphoto">${it.i ? `<img src="${esc(it.i)}" alt="">` : ""}
       ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}
@@ -682,7 +684,7 @@ function openDetail(it) {
     ${it.r >= 10 ? `<span class="real">✅ Бот видел: цена реально упала на ${it.r}%</span>` : ""}
     ${verdict}
     <div class="sec">Цены в магазинах</div>
-    ${others.length ? rows : `<div class="nocmp">🔎 Такой же товар в других магазинах пока не нашёлся.</div>`}`;
+    ${others.length ? rows : `<div class="nocmp">🔎 Такой же товар в других магазинах пока не нашёлся.<br><small>Бот сравнивает по названию. Если продавец не указал модель — сравнить не получится.</small></div>`}`;
   $("dopen").textContent = `Открыть в ${SHOP_FULL_IN[here]} →`;
   document.body.classList.add("open-dsheet");
 }
