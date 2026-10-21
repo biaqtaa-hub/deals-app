@@ -7,268 +7,414 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
-    --bg: var(--tg-theme-bg-color, #ffffff);
-    --bg2: var(--tg-theme-secondary-bg-color, #f1f2f6);
-    --text: var(--tg-theme-text-color, #15161a);
-    --hint: var(--tg-theme-hint-color, #8b8e98);
-    --accent: var(--tg-theme-button-color, #2f7cf6);
-    --accent-text: var(--tg-theme-button-text-color, #ffffff);
-    --sale: #ff3b5c;
-    --green: #17a65a;
-    --line: rgba(127,127,127,.18);
+    --bg: #f4f5fa; --card: #ffffff; --soft: #eef0f6; --text: #16171d; --hint: #8a8d99;
+    --line: rgba(20,20,40,.08); --shadow: 0 4px 18px rgba(30,30,60,.08);
+    --accent: #6c4cf5; --accent2: #ff4d7d; --accent-text: #fff;
+    --sale: #ff3d6a; --green: #12a150;
+  }
+  html.dark {
+    --bg: #0f1117; --card: #191c25; --soft: #232734; --text: #f2f3f7; --hint: #8b90a0;
+    --line: rgba(255,255,255,.07); --shadow: 0 4px 18px rgba(0,0,0,.35);
+    --accent: #8b6dff; --green: #2fd07a;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    margin: 0; background: var(--bg2); color: var(--text);
+    margin: 0; background: var(--bg); color: var(--text);
     font: 16px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   }
-  button { font: inherit; color: inherit; }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+  button:active { transform: scale(.97); }
 
-  /* шапка */
+  /* ---------- шапка ---------- */
   .hero {
-    padding: 18px 16px 14px;
-    background: linear-gradient(135deg, #ff3b5c 0%, #ff8a3d 100%);
-    color: #fff;
+    padding: 20px 16px 26px; color: #fff; position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #6c4cf5 0%, #c045e0 45%, #ff4d7d 100%);
   }
-  .hero h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.3px; }
-  .hero p { margin: 4px 0 0; font-size: 14px; opacity: .9; }
+  .hero::after {
+    content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px;
+    border-radius: 50%; background: rgba(255,255,255,.12);
+  }
+  .hero h1 { margin: 0; font-size: 25px; font-weight: 800; letter-spacing: -.4px; }
+  .stats { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .pill {
+    background: rgba(255,255,255,.2); backdrop-filter: blur(6px);
+    padding: 5px 10px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  }
 
-  /* поиск (закреплён сверху) */
-  .searchbar {
-    position: sticky; top: 0; z-index: 10; padding: 10px 12px;
-    background: var(--bg2);
+  /* ---------- поиск + кнопка фильтров ---------- */
+  .bar {
+    position: sticky; top: 0; z-index: 20; display: flex; gap: 8px; padding: 10px 12px;
+    background: var(--bg); margin-top: -14px; border-radius: 18px 18px 0 0;
   }
   .search {
-    width: 100%; font-size: 17px; padding: 13px 16px; border-radius: 14px;
-    border: 2px solid transparent; background: var(--bg); color: var(--text); outline: none;
-    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    flex: 1; min-width: 0; font-size: 16px; padding: 13px 14px; border-radius: 14px;
+    border: 2px solid transparent; background: var(--card); color: var(--text); outline: none;
+    box-shadow: var(--shadow);
   }
   .search:focus { border-color: var(--accent); }
+  .fbtn {
+    position: relative; padding: 0 14px; border-radius: 14px; background: var(--card);
+    box-shadow: var(--shadow); font-weight: 700; font-size: 15px; white-space: nowrap;
+  }
+  .fbtn .count {
+    position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; border-radius: 10px;
+    background: var(--accent2); color: #fff; font-size: 12px; line-height: 20px; text-align: center; padding: 0 5px;
+  }
 
-  /* блоки фильтров */
-  .panel { background: var(--bg); margin: 0 12px 10px; border-radius: 16px; padding: 12px; }
-  .label { font-size: 13px; color: var(--hint); margin: 0 2px 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
-  .label { display: flex; justify-content: space-between; align-items: center; }
-  .wrap + .label { margin-top: 14px; }
-  .wrap { display: flex; flex-wrap: wrap; gap: 8px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .grid2 + .label, .grid3 + .label { margin-top: 14px; }
+  /* ---------- категории ---------- */
+  .cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 12px 8px; }
   .tile {
-    border: 0; border-radius: 14px; padding: 10px 4px; background: var(--bg2); cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; font-weight: 600;
-    transition: transform .08s;
+    background: var(--card); border-radius: 16px; padding: 10px 4px 9px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
   }
-  .tile span { font-size: 24px; line-height: 1; }
-  .tile:active { transform: scale(.96); }
+  .tile .ic {
+    width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; font-size: 22px;
+    background: var(--soft);
+  }
   .tile.on { background: var(--accent); color: var(--accent-text); }
-  .grid2 .chip { width: 100%; padding: 11px 6px; font-size: 14px; }
-  .chip {
-    border: 0; border-radius: 12px; padding: 10px 13px; font-size: 15px;
-    background: var(--bg2); cursor: pointer; transition: transform .08s;
-  }
-  .chip:active { transform: scale(.96); }
-  .chip.on { background: var(--accent); color: var(--accent-text); font-weight: 600; }
-  .price-to {
-    display: flex; align-items: center; gap: 4px; background: var(--bg2);
-    border-radius: 12px; padding: 0 10px; font-size: 14px; white-space: nowrap;
-  }
-  .price-to input {
-    width: 100%; min-width: 0; border: 0; background: transparent; color: var(--text);
-    font-size: 15px; padding: 11px 0; outline: none;
-  }
-  .reset {
-    border: 0; background: none; color: var(--sale); font-weight: 700; font-size: 13px;
-    padding: 0; cursor: pointer; text-transform: none; letter-spacing: 0;
-  }
+  .tile.on .ic { background: rgba(255,255,255,.22); }
 
-  .info { color: var(--hint); font-size: 14px; padding: 2px 16px 8px; }
+  /* ---------- активные фильтры ---------- */
+  .active { display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 12px 8px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--card); color: var(--accent);
+    border: 1.5px solid var(--accent); padding: 6px 10px; border-radius: 20px; font-size: 13px; font-weight: 700;
+  }
+  .tag b { font-size: 15px; line-height: 1; opacity: .8; }
+  .found { color: var(--hint); font-size: 14px; padding: 0 16px 8px; }
 
-  /* плитка товаров */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 8px 12px; }
+  /* ---------- товары ---------- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px 12px; }
   .card {
-    background: var(--bg); border-radius: 16px; overflow: hidden;
-    display: flex; flex-direction: column; cursor: pointer;
+    background: var(--card); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
   }
   .photo { position: relative; aspect-ratio: 1 / 1; background: #fff; }
   .photo img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .badge {
-    position: absolute; left: 8px; top: 8px; background: var(--sale); color: #fff;
-    font-weight: 800; font-size: 15px; padding: 3px 8px; border-radius: 9px;
+    position: absolute; left: 8px; top: 8px; color: #fff; font-weight: 800; font-size: 14px;
+    padding: 4px 9px; border-radius: 10px; background: linear-gradient(135deg, #ff4d7d, #ff7a45);
+    box-shadow: 0 3px 10px rgba(255,77,125,.35);
   }
-  .info-box { padding: 10px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
-  .price { font-size: 19px; font-weight: 800; color: var(--sale); }
-  .old { color: var(--hint); text-decoration: line-through; font-size: 13px; font-weight: 400; margin-left: 5px; }
+  .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .price { font-size: 19px; font-weight: 800; }
+  .old { color: var(--hint); text-decoration: line-through; font-size: 13px; font-weight: 500; margin-left: 4px; }
   .real {
-    font-size: 12px; font-weight: 700; color: var(--green); background: rgba(23,166,90,.12);
-    padding: 3px 7px; border-radius: 7px; align-self: flex-start;
+    align-self: flex-start; font-size: 12px; font-weight: 800; color: var(--green);
+    background: color-mix(in srgb, var(--green) 14%, transparent); padding: 3px 8px; border-radius: 8px;
   }
   .name {
-    font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden; max-height: 2.7em;
+    font-size: 13.5px; color: var(--text); opacity: .85; display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden; max-height: 2.7em;
   }
   .open {
-    border: 0; border-radius: 11px; padding: 10px; font-size: 15px; font-weight: 600;
-    background: var(--accent); color: var(--accent-text); cursor: pointer; width: 100%; margin-top: auto;
+    margin-top: auto; border-radius: 12px; padding: 10px; font-size: 14px; font-weight: 700;
+    background: var(--soft); color: var(--accent);
   }
   .more {
-    display: block; margin: 0 12px 28px; width: calc(100% - 24px); border: 0; border-radius: 14px;
-    padding: 14px; font-size: 16px; background: var(--bg); color: var(--accent); font-weight: 700; cursor: pointer;
+    display: block; margin: 0 12px 16px; width: calc(100% - 24px); border-radius: 16px; padding: 14px;
+    font-size: 16px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #6c4cf5, #c045e0);
   }
-  .empty { grid-column: 1 / -1; text-align: center; color: var(--hint); padding: 40px 20px; font-size: 16px; }
-  .hint { font-size: 13px; color: var(--hint); padding: 0 16px 14px; }
+  .empty { grid-column: 1 / -1; text-align: center; color: var(--hint); padding: 40px 20px; }
+  .empty div { font-size: 40px; margin-bottom: 8px; }
+  .note { font-size: 12.5px; color: var(--hint); padding: 4px 16px 28px; }
+
+  /* ---------- панель фильтров ---------- */
+  .shade { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--card);
+    border-radius: 22px 22px 0 0; max-height: 88vh; display: flex; flex-direction: column;
+    transform: translateY(105%); transition: transform .25s ease;
+  }
+  .open-sheet .shade { opacity: 1; pointer-events: auto; }
+  .open-sheet .sheet { transform: none; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
+  .sheet-head h2 { margin: 0; font-size: 20px; }
+  .x { width: 34px; height: 34px; border-radius: 50%; background: var(--soft); font-size: 18px; }
+  .sheet-body { overflow-y: auto; padding: 4px 16px 10px; }
+  .sec { font-size: 13px; color: var(--hint); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; margin: 14px 0 8px; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .opt { background: var(--soft); border-radius: 13px; padding: 12px 8px; font-size: 14.5px; font-weight: 600; text-align: center; }
+  .opt.on { background: var(--accent); color: var(--accent-text); }
+  .range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .range label { min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--soft); border-radius: 13px; padding: 0 12px; color: var(--hint); font-size: 14px; }
+  .range input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font-size: 16px; padding: 12px 0; outline: none; }
+  .switch { display: flex; align-items: center; justify-content: space-between; background: var(--soft); border-radius: 13px; padding: 12px; font-weight: 600; font-size: 15px; width: 100%; text-align: left; }
+  .switch small { display: block; color: var(--hint); font-weight: 400; font-size: 12.5px; margin-top: 2px; }
+  .knob { width: 46px; height: 28px; border-radius: 14px; background: var(--hint); position: relative; flex: 0 0 46px; transition: background .2s; }
+  .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .switch.on .knob { background: var(--green); }
+  .switch.on .knob::after { left: 21px; }
+  .sheet-foot { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; padding: 10px 16px 18px; border-top: 1px solid var(--line); }
+  .btn2 { border-radius: 14px; padding: 14px; font-weight: 700; background: var(--soft); }
+  .btn1 { border-radius: 14px; padding: 14px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #6c4cf5, #c045e0); }
+
+  /* ---------- окошко благодарности ---------- */
+  .modal {
+    position: fixed; left: 50%; top: 50%; z-index: 60; width: min(340px, calc(100% - 32px));
+    transform: translate(-50%, -46%) scale(.96); opacity: 0; pointer-events: none;
+    transition: transform .22s ease, opacity .22s ease;
+    background: var(--card); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    text-align: center;
+  }
+  .modal-top { padding: 22px 18px 18px; color: #fff; background: linear-gradient(135deg, #6c4cf5 0%, #c045e0 50%, #ff4d7d 100%); }
+  .modal-top .big { font-size: 44px; line-height: 1; }
+  .modal-top h3 { margin: 10px 0 0; font-size: 19px; }
+  .modal-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .modal-body p { margin: 0; color: var(--hint); font-size: 15px; }
+  .phone {
+    background: var(--soft); border-radius: 14px; padding: 12px; font-size: 21px; font-weight: 800; letter-spacing: .3px;
+  }
+  .phone small { display: block; font-size: 13px; color: var(--accent); font-weight: 800; letter-spacing: 1px; margin-top: 2px; }
+  .copy { border-radius: 14px; padding: 12px; font-weight: 700; background: var(--soft); color: var(--accent); }
+  .go { border-radius: 14px; padding: 13px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #6c4cf5, #c045e0); }
+  .show-modal .shade { opacity: 1; pointer-events: auto; z-index: 55; }
+  .show-modal .modal { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
 </style>
 </head>
 <body>
 <div class="hero">
   <h1>🛍 Скидки для своих</h1>
-  <p id="upd">Загружаю товары…</p>
-</div>
-
-<div class="searchbar">
-  <input id="q" class="search" type="search" placeholder="🔍 Что ищем? Например: пылесос">
-</div>
-
-<div class="panel">
-  <div class="label">Категории <button id="reset" class="reset" style="display:none">✕ Сбросить всё</button></div>
-  <div id="cats" class="grid3"></div>
-  <div class="label">Сортировка</div>
-  <div id="sorts" class="grid2"></div>
-  <div class="label">Фильтры</div>
-  <div class="grid2">
-    <label class="price-to">До <input id="max" type="number" inputmode="numeric" placeholder="любая цена"> ₽</label>
-    <button id="real" class="chip">✅ Реальные скидки</button>
+  <div class="stats">
+    <span class="pill" id="s1">Загружаю…</span>
+    <span class="pill" id="s2" style="display:none"></span>
   </div>
 </div>
 
-<div id="info" class="info"></div>
+<div class="bar">
+  <input id="q" class="search" type="search" placeholder="🔍 Что ищем?">
+  <button id="fbtn" class="fbtn">⚙️ Фильтры<span id="fcount" class="count" style="display:none"></span></button>
+</div>
+
+<div id="cats" class="cats"></div>
+<div id="active" class="active"></div>
+<div id="found" class="found"></div>
 <div id="list" class="grid"></div>
 <button id="more" class="more" style="display:none">Показать ещё</button>
-<div class="hint">✅ «Реально» — бот сам видел, что цена упала. Красная скидка на фото — со слов продавца, она бывает завышенной.</div>
+<div class="note">✅ «Реально» — бот сам видел, что цена упала. Скидка на фото — со слов продавца, иногда она завышена.</div>
+
+<div class="shade" id="shade"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-head"><h2>Фильтры</h2><button class="x" id="close">✕</button></div>
+  <div class="sheet-body">
+    <div class="sec">Сначала показывать</div>
+    <div class="opts" id="sortOpts"></div>
+    <div class="sec">Скидка</div>
+    <div class="opts" id="discOpts"></div>
+    <div class="sec">Цена, ₽</div>
+    <div class="range">
+      <label>от <input id="pmin" type="number" inputmode="numeric" placeholder="0"></label>
+      <label>до <input id="pmax" type="number" inputmode="numeric" placeholder="любая"></label>
+    </div>
+    <div class="sec">Проверка скидки</div>
+    <button class="switch" id="realSw">
+      <span>✅ Только реальные скидки<small>Бот сам видел, что цена упала</small></span>
+      <span class="knob"></span>
+    </button>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn2" id="clear">Сбросить</button>
+    <button class="btn1" id="apply">Показать</button>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-top">
+    <div class="big">🙏</div>
+    <h3>Спасибо, что пользуетесь!</h3>
+  </div>
+  <div class="modal-body">
+    <p>Если хотите отблагодарить меня, всегда рад пожертвованиям</p>
+    <div class="phone"><span id="phone"></span><small id="bank"></small></div>
+    <button class="copy" id="copy">📋 Скопировать номер</button>
+    <button class="go" id="go">Перейти в Ozon →</button>
+  </div>
+</div>
 
 <script>
+// ===== Текст благодарности (можно поменять) =====
+const DONATE_PHONE = "+7 919 608-29-90";
+const DONATE_BANK = "OZON";
+
 const tg = window.Telegram && Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
+if ((tg && tg.colorScheme === "dark") || (!tg && matchMedia("(prefers-color-scheme: dark)").matches))
+  document.documentElement.classList.add("dark");
 
+const SORTS = [["popular", "⭐ Популярные"], ["cheap", "💰 Дешёвые"], ["expensive", "💎 Дорогие"],
+               ["disc_big", "🔥 Большая скидка"], ["disc_small", "🏷 Маленькая скидка"], ["real_big", "✅ Сильнее упали"]];
+const DISCS = [[0, "Любая"], [20, "от 20%"], [50, "от 50%"], [70, "от 70%"]];
+const SHORT = { "Электроника": "Электроника", "Игры и приставки": "Игры", "Бытовая техника": "Техника",
+                "Детские товары": "Детям", "Товары для дома": "Для дома", "Слежки": "Мои слежки" };
 const PAGE = 40;
-let all = [], cats = [], updated = "";
-// sort: null = популярные; price: "asc"/"desc"; disc: "desc"/"asc"
-let state = { cat: null, price: null, disc: null, real: false, q: "", max: 0, shown: PAGE };
+const fresh = () => ({ cat: null, sort: "popular", disc: 0, pmin: 0, pmax: 0, real: false, q: "", shown: PAGE });
+let all = [], cats = [], st = fresh();
 
 const $ = id => document.getElementById(id);
 const money = n => n.toLocaleString("ru-RU") + " ₽";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const haptic = () => { try { tg.HapticFeedback.selectionChanged(); } catch (e) {} };
+const tap = () => { try { tg.HapticFeedback.selectionChanged(); } catch (e) {} };
+const best = it => Math.max(it.d, it.r);
 
-function chip(label, on, onClick) {
-  const b = document.createElement("button");
-  b.className = "chip" + (on ? " on" : "");
-  b.textContent = label;
-  b.onclick = () => { haptic(); onClick(); state.shown = PAGE; drawControls(); draw(); };
-  return b;
-}
-
-const SHORT = { "Электроника": "Электроника", "Игры и приставки": "Игры", "Бытовая техника": "Техника",
-                "Детские товары": "Детям", "Товары для дома": "Для дома", "Слежки": "Мои слежки" };
-
-function tile(name) {
-  const m = name.match(/^(\S+)\s+(.*)$/);
-  const icon = m ? m[1] : "🏷", text = m ? (SHORT[m[2]] || m[2]) : name;
-  const b = document.createElement("button");
-  b.className = "tile" + (state.cat === name ? " on" : "");
-  b.innerHTML = `<span>${esc(icon)}</span>${esc(text)}`;
-  b.onclick = () => { haptic(); state.cat = state.cat === name ? null : name; state.shown = PAGE; drawControls(); draw(); };
-  return b;
-}
-
-function drawControls() {
-  const c = $("cats"); c.innerHTML = "";
-  cats.forEach(name => c.appendChild(tile(name)));
-
-  const s = $("sorts"); s.innerHTML = "";
-  const priceLabel = { null: "💰 Цена", asc: "💰 Дешёвые сначала", desc: "💰 Дорогие сначала" }[state.price];
-  const discLabel = { null: "🔥 Скидка", desc: "🔥 Большие скидки", asc: "🔥 Маленькие скидки" }[state.disc];
-  s.appendChild(chip(priceLabel, !!state.price, () => {
-    state.price = { null: "asc", asc: "desc", desc: null }[state.price]; state.disc = null;
-  }));
-  s.appendChild(chip(discLabel, !!state.disc, () => {
-    state.disc = { null: "desc", desc: "asc", asc: null }[state.disc]; state.price = null;
-  }));
-
-  $("real").className = "chip" + (state.real ? " on" : "");
-  const any = state.cat || state.price || state.disc || state.real || state.max || state.q;
-  $("reset").style.display = any ? "inline-block" : "none";
-}
-
-function filtered() {
-  const words = state.q.toLowerCase().split(/\s+/).filter(Boolean);
-  let list = all.filter(it =>
-    (!state.cat || it.c === state.cat) &&
-    (!state.max || it.p <= state.max) &&
-    (!state.real || it.r >= 10) &&
+function list() {
+  const words = st.q.toLowerCase().split(/\s+/).filter(Boolean);
+  const out = all.filter(it =>
+    (!st.cat || it.c === st.cat) &&
+    (!st.disc || best(it) >= st.disc) &&
+    (!st.pmin || it.p >= st.pmin) &&
+    (!st.pmax || it.p <= st.pmax) &&
+    (!st.real || it.r >= 10) &&
     words.every(w => it.n.toLowerCase().includes(w)));
-  const disc = it => state.real ? it.r : Math.max(it.d, it.r);
-  if (state.price === "asc") list.sort((a, b) => a.p - b.p);
-  else if (state.price === "desc") list.sort((a, b) => b.p - a.p);
-  else if (state.disc === "desc") list.sort((a, b) => disc(b) - disc(a));
-  else if (state.disc === "asc") list.sort((a, b) => disc(a) - disc(b));
-  else list.sort((a, b) => a.k - b.k);
-  return list;
+  const by = {
+    popular: (a, b) => a.k - b.k,
+    cheap: (a, b) => a.p - b.p,
+    expensive: (a, b) => b.p - a.p,
+    disc_big: (a, b) => best(b) - best(a),
+    disc_small: (a, b) => best(a) - best(b),
+    real_big: (a, b) => b.r - a.r,
+  }[st.sort];
+  return out.sort(by);
+}
+
+function filterCount() {
+  return (st.sort !== "popular") + (st.disc > 0) + (st.pmin > 0 || st.pmax > 0) + st.real;
+}
+
+function drawCats() {
+  $("cats").innerHTML = cats.map(name => {
+    const m = name.match(/^(\S+)\s+(.*)$/);
+    const icon = m ? m[1] : "🏷", text = m ? (SHORT[m[2]] || m[2]) : name;
+    return `<button class="tile${st.cat === name ? " on" : ""}" data-cat="${esc(name)}"><span class="ic">${esc(icon)}</span>${esc(text)}</button>`;
+  }).join("");
+}
+
+function drawActive() {
+  const t = [];
+  if (st.sort !== "popular") t.push(["sort", SORTS.find(s => s[0] === st.sort)[1]]);
+  if (st.disc) t.push(["disc", `Скидка от ${st.disc}%`]);
+  if (st.pmin || st.pmax) t.push(["price", st.pmin && st.pmax ? `${money(st.pmin)} – ${money(st.pmax)}` : st.pmax ? `До ${money(st.pmax)}` : `От ${money(st.pmin)}`]);
+  if (st.real) t.push(["real", "✅ Только реальные"]);
+  $("active").innerHTML = t.map(([k, label]) => `<button class="tag" data-off="${k}">${esc(label)} <b>✕</b></button>`).join("");
+  const n = filterCount();
+  $("fcount").style.display = n ? "block" : "none";
+  $("fcount").textContent = n;
 }
 
 function card(it) {
-  const badge = Math.max(it.d, it.r);
   const old = it.r >= 10 && it.u ? it.u : (it.o > it.p ? it.o : 0);
-  return `<div class="card" data-link="${esc(it.l)}">
-    <div class="photo">
-      ${it.i ? `<img src="${esc(it.i)}" loading="lazy" alt="">` : ""}
-      ${badge > 0 ? `<span class="badge">−${badge}%</span>` : ""}
-    </div>
-    <div class="info-box">
+  return `<div class="card">
+    <div class="photo">${it.i ? `<img src="${esc(it.i)}" loading="lazy" alt="">` : ""}
+      ${best(it) > 0 ? `<span class="badge">−${best(it)}%</span>` : ""}</div>
+    <div class="body">
       <div class="price">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
       ${it.r >= 10 ? `<span class="real">✅ Реально −${it.r}%</span>` : ""}
       <div class="name">${esc(it.n)}</div>
-      <button class="open">Открыть в Ozon</button>
+      <button class="open" data-link="${esc(it.l)}">Открыть в Ozon</button>
     </div>
   </div>`;
 }
 
 function draw() {
-  const list = filtered();
-  $("list").innerHTML = list.length
-    ? list.slice(0, state.shown).map(card).join("")
-    : `<div class="empty">Ничего не нашлось 🤷<br>Попробуй другое слово или нажми «Сбросить всё»</div>`;
-  $("more").style.display = list.length > state.shown ? "block" : "none";
-  $("info").textContent = `Найдено товаров: ${list.length}`;
+  const l = list();
+  drawCats(); drawActive();
+  $("found").textContent = `Найдено товаров: ${l.length}`;
+  $("list").innerHTML = l.length ? l.slice(0, st.shown).map(card).join("")
+    : `<div class="empty"><div>🤷</div>Ничего не нашлось.<br>Попробуй другое слово или сбрось фильтры.</div>`;
+  $("more").style.display = l.length > st.shown ? "block" : "none";
 }
 
-$("list").addEventListener("click", e => {
-  const c = e.target.closest(".card");
-  if (!c) return;
-  if (tg && tg.openLink) tg.openLink(c.dataset.link); else window.open(c.dataset.link, "_blank");
-});
-$("more").onclick = () => { state.shown += PAGE; draw(); };
-$("real").onclick = () => { haptic(); state.real = !state.real; state.shown = PAGE; drawControls(); draw(); };
-$("reset").onclick = () => {
-  state = { cat: null, price: null, disc: null, real: false, q: "", max: 0, shown: PAGE };
-  $("q").value = ""; $("max").value = ""; drawControls(); draw();
+/* ---------- панель фильтров ---------- */
+let draft;
+function drawSheet() {
+  $("sortOpts").innerHTML = SORTS.map(([k, label]) =>
+    `<button class="opt${draft.sort === k ? " on" : ""}" data-sort="${k}">${label}</button>`).join("");
+  $("discOpts").innerHTML = DISCS.map(([v, label]) =>
+    `<button class="opt${draft.disc === v ? " on" : ""}" data-disc="${v}">${label}</button>`).join("");
+  $("realSw").className = "switch" + (draft.real ? " on" : "");
+  const saved = st; st = draft; const n = list().length; st = saved;
+  $("apply").textContent = `Показать ${n} товаров`;
+}
+function openSheet() {
+  draft = { ...st };
+  $("pmin").value = draft.pmin || ""; $("pmax").value = draft.pmax || "";
+  drawSheet(); document.body.classList.add("open-sheet");
+}
+function closeSheet() { document.body.classList.remove("open-sheet"); }
+
+$("fbtn").onclick = () => { tap(); openSheet(); };
+$("close").onclick = closeSheet;
+$("shade").onclick = closeSheet;
+$("sortOpts").onclick = e => { const b = e.target.closest("[data-sort]"); if (!b) return; tap();
+  draft.sort = draft.sort === b.dataset.sort ? "popular" : b.dataset.sort; drawSheet(); };
+$("discOpts").onclick = e => { const b = e.target.closest("[data-disc]"); if (!b) return; tap();
+  const v = +b.dataset.disc; draft.disc = draft.disc === v ? 0 : v; drawSheet(); };
+$("realSw").onclick = () => { tap(); draft.real = !draft.real; drawSheet(); };
+$("pmin").oninput = e => { draft.pmin = parseInt(e.target.value) || 0; drawSheet(); };
+$("pmax").oninput = e => { draft.pmax = parseInt(e.target.value) || 0; drawSheet(); };
+$("clear").onclick = () => { tap(); draft = { ...fresh(), cat: st.cat, q: st.q };
+  $("pmin").value = ""; $("pmax").value = ""; drawSheet(); };
+$("apply").onclick = () => { tap(); st = { ...draft, shown: PAGE }; closeSheet(); draw(); scrollTo({ top: 0, behavior: "smooth" }); };
+
+/* ---------- главный экран ---------- */
+$("cats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) return; tap();
+  st.cat = st.cat === b.dataset.cat ? null : b.dataset.cat; st.shown = PAGE; draw(); };
+$("active").onclick = e => { const b = e.target.closest("[data-off]"); if (!b) return; tap();
+  const k = b.dataset.off;
+  if (k === "sort") st.sort = "popular"; if (k === "disc") st.disc = 0;
+  if (k === "price") { st.pmin = 0; st.pmax = 0; } if (k === "real") st.real = false;
+  st.shown = PAGE; draw(); };
+/* ---------- переход в Ozon + благодарность один раз ---------- */
+const THANKS_KEY = "thanks_shown";
+let thanksShown = false, pendingLink = null;
+try { thanksShown = localStorage.getItem(THANKS_KEY) === "1"; } catch (e) {}
+try {   // запоминаем в самом Telegram, чтобы не показывать повторно
+  if (tg && tg.CloudStorage && tg.isVersionAtLeast && tg.isVersionAtLeast("6.9"))
+    tg.CloudStorage.getItem(THANKS_KEY, (err, v) => { if (!err && v === "1") thanksShown = true; });
+} catch (e) {}
+function markThanks() {
+  thanksShown = true;
+  try { localStorage.setItem(THANKS_KEY, "1"); } catch (e) {}
+  try { if (tg && tg.CloudStorage && tg.isVersionAtLeast("6.9")) tg.CloudStorage.setItem(THANKS_KEY, "1"); } catch (e) {}
+}
+function goTo(link) { if (tg && tg.openLink) tg.openLink(link); else window.open(link, "_blank"); }
+
+$("phone").textContent = DONATE_PHONE;
+$("bank").textContent = DONATE_BANK;
+$("copy").onclick = () => {
+  const num = DONATE_PHONE.replace(/[^\d+]/g, "");
+  const done = () => { $("copy").textContent = "✅ Номер скопирован"; try { tg.HapticFeedback.notificationOccurred("success"); } catch (e) {} };
+  try { navigator.clipboard.writeText(num).then(done, fallback); } catch (e) { fallback(); }
+  function fallback() {
+    const ta = document.createElement("textarea"); ta.value = num; document.body.appendChild(ta);
+    ta.select(); try { document.execCommand("copy"); done(); } catch (e) {} ta.remove();
+  }
 };
+function closeModal() { document.body.classList.remove("show-modal"); }
+$("go").onclick = () => { closeModal(); if (pendingLink) goTo(pendingLink); pendingLink = null; };
+$("shade").addEventListener("click", () => { if (document.body.classList.contains("show-modal")) { closeModal(); pendingLink = null; } });
+
+$("list").onclick = e => { const c = e.target.closest(".card"); if (!c) return;
+  const link = c.querySelector(".open").dataset.link;
+  if (thanksShown) return goTo(link);
+  markThanks(); pendingLink = link;
+  $("copy").textContent = "📋 Скопировать номер";
+  document.body.classList.add("show-modal"); };
+$("more").onclick = () => { st.shown += PAGE; draw(); };
 let t;
-$("q").oninput = e => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value; state.shown = PAGE; drawControls(); draw(); }, 250); };
-$("max").oninput = e => { state.max = parseInt(e.target.value) || 0; state.shown = PAGE; drawControls(); draw(); };
+$("q").oninput = e => { clearTimeout(t); t = setTimeout(() => { st.q = e.target.value; st.shown = PAGE; draw(); }, 250); };
 
 fetch("data.json?t=" + Date.now())
   .then(r => r.json())
   .then(d => {
-    all = d.items || []; cats = d.cats || []; updated = d.updated || "";
-    $("upd").textContent = `Обновлено ${updated} · ${all.length} товаров со скидкой`;
-    drawControls(); draw();
+    all = d.items || []; cats = d.cats || [];
+    $("s1").textContent = `🔥 ${all.length} товаров со скидкой`;
+    $("s2").textContent = `🕒 обновлено ${d.updated || ""}`; $("s2").style.display = "";
+    draw();
   })
   .catch(() => {
-    $("upd").textContent = "Товаров пока нет";
-    $("list").innerHTML = `<div class="empty">😴 Бот ещё собирает скидки.<br>Загляни через полчаса.</div>`;
+    $("s1").textContent = "Товаров пока нет";
+    $("list").innerHTML = `<div class="empty"><div>😴</div>Бот ещё собирает скидки.<br>Загляни через полчаса.</div>`;
   });
-drawControls();
 </script>
 </body>
 </html>
