@@ -132,8 +132,8 @@
     border-radius: 22px 22px 0 0; max-height: 88vh; display: flex; flex-direction: column;
     transform: translateY(105%); transition: transform .25s ease;
   }
-  .open-sheet .shade { opacity: 1; pointer-events: auto; }
-  .open-sheet .sheet { transform: none; }
+  .open-sheet .shade, .open-wsheet .shade { opacity: 1; pointer-events: auto; }
+  .open-sheet #sheet, .open-wsheet #wsheet { transform: none; }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
   .sheet-head h2 { margin: 0; font-size: 20px; }
   .x { width: 34px; height: 34px; border-radius: 50%; background: var(--soft); font-size: 18px; }
@@ -154,6 +154,39 @@
   .sheet-foot { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; padding: 10px 16px 18px; border-top: 1px solid var(--line); }
   .btn2 { border-radius: 14px; padding: 14px; font-weight: 700; background: var(--soft); }
   .btn1 { border-radius: 14px; padding: 14px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #6c4cf5, #c045e0); }
+
+  /* ---------- техработы ---------- */
+  .tech {
+    display: none; margin: 10px 12px 0; padding: 12px 14px; border-radius: 14px; font-size: 14px; font-weight: 600;
+    background: #ffb020; color: #3a2600;
+  }
+  .tech b { display: block; font-size: 16px; margin-bottom: 2px; }
+
+  /* ---------- сравнение цен ---------- */
+  .cmp { display: flex; flex-direction: column; gap: 4px; }
+  .cmpi {
+    display: flex; justify-content: space-between; align-items: center; gap: 4px;
+    background: var(--soft); border-radius: 9px; padding: 5px 8px; font-size: 12.5px; font-weight: 700; text-align: left;
+  }
+  .cmpi.cheaper { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+  .cmpi .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; margin-right: 4px; display: inline-block; }
+  .dot.ozon { background: #005bff; } .dot.wb { background: #cb11ab; }
+
+  /* ---------- кнопка и форма слежки ---------- */
+  .watch-btn {
+    margin-top: 12px; background: #fff; color: #6c4cf5; font-weight: 800; font-size: 15px;
+    padding: 10px 14px; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.15);
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .field b { font-size: 15px; }
+  .field span { font-size: 12.5px; color: var(--hint); }
+  .field input {
+    font-size: 16px; padding: 12px 14px; border-radius: 13px; border: 2px solid transparent;
+    background: var(--soft); color: var(--text); outline: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .preview { background: var(--soft); border-radius: 13px; padding: 10px 12px; font-size: 13px; color: var(--hint); word-break: break-word; }
+  .preview code { color: var(--text); font-family: inherit; font-weight: 600; }
 
   /* ---------- окошко благодарности ---------- */
   .modal {
@@ -185,7 +218,9 @@
     <span class="pill" id="s1">Загружаю…</span>
     <span class="pill" id="s2" style="display:none"></span>
   </div>
+  <button class="watch-btn" id="watchBtn">➕ Следить за товаром</button>
 </div>
+<div class="tech" id="tech"><b>🛠 Технические работы</b>Бот временно не обновляет цены, скоро всё заработает. Цены ниже могут быть устаревшими.</div>
 
 <div class="bar">
   <input id="q" class="search" type="search" placeholder="🔍 Что ищем?">
@@ -223,6 +258,23 @@
   <div class="sheet-foot">
     <button class="btn2" id="clear">Сбросить</button>
     <button class="btn1" id="apply">Показать</button>
+  </div>
+</div>
+
+<div class="sheet" id="wsheet">
+  <div class="sheet-head"><h2>➕ Следить за товаром</h2><button class="x" id="wclose">✕</button></div>
+  <div class="sheet-body">
+    <p style="margin:2px 0 14px;color:var(--hint);font-size:14px">Бот будет искать этот товар на Ozon и WB и пришлёт сообщение, когда цена сильно упадёт.</p>
+    <label class="field"><b>Что ищем? *</b><span>Например: playstation 5, пылесос dyson</span>
+      <input id="wq" placeholder="Название товара"></label>
+    <label class="field"><b>Надо (необязательно)</b><span>Хотя бы одно из этих слов должно быть в названии. Через запятую.</span>
+      <input id="wneed" placeholder="Например: консоль, приставка"></label>
+    <label class="field"><b>Без (необязательно)</b><span>Товары с этими словами пропускаем. Через запятую.</span>
+      <input id="wskip" placeholder="Например: чехол, геймпад, ps4"></label>
+    <div class="preview" id="wprev"></div>
+  </div>
+  <div class="sheet-foot" style="grid-template-columns:1fr">
+    <button class="btn1" id="wsave">👀 Начать следить</button>
   </div>
 </div>
 
@@ -322,6 +374,8 @@ function card(it) {
     <div class="body">
       <div class="price">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
       ${it.r >= 10 ? `<span class="real">✅ Реально −${it.r}%</span>` : ""}
+      ${(it.m || []).length ? `<div class="cmp">${it.m.map(m => `<button class="cmpi${m.p < it.p ? " cheaper" : ""}" data-alt="${esc(m.l)}">
+          <span><span class="dot ${m.s}"></span>${SHOPS[m.s] || m.s}</span><span>${money(m.p)}${m.p < it.p ? " ✓" : ""}</span></button>`).join("")}</div>` : ""}
       <div class="name">${esc(it.n)}</div>
       <button class="open" data-link="${esc(it.l)}">Открыть в ${SHOPS[shopOf(it)]}</button>
     </div>
@@ -359,7 +413,7 @@ function closeSheet() { document.body.classList.remove("open-sheet"); }
 
 $("fbtn").onclick = () => { tap(); openSheet(); };
 $("close").onclick = closeSheet;
-$("shade").onclick = closeSheet;
+$("shade").onclick = () => { closeSheet(); document.body.classList.remove("open-wsheet"); };
 $("sortOpts").onclick = e => { const b = e.target.closest("[data-sort]"); if (!b) return; tap();
   draft.sort = draft.sort === b.dataset.sort ? "popular" : b.dataset.sort; drawSheet(); };
 $("shopOpts").onclick = e => { const b = e.target.closest("[data-shop]"); if (!b) return; tap();
@@ -372,6 +426,33 @@ $("pmax").oninput = e => { draft.pmax = parseInt(e.target.value) || 0; drawSheet
 $("clear").onclick = () => { tap(); draft = { ...fresh(), cat: st.cat, q: st.q };
   $("pmin").value = ""; $("pmax").value = ""; drawSheet(); };
 $("apply").onclick = () => { tap(); st = { ...draft, shown: PAGE }; closeSheet(); draw(); scrollTo({ top: 0, behavior: "smooth" }); };
+
+/* ---------- слежка из приложения ---------- */
+const clean = s => s.replace(/\|/g, " ").replace(/\s+/g, " ").trim();
+function watchRule() {
+  const q = clean($("wq").value), need = clean($("wneed").value), skip = clean($("wskip").value);
+  if (!q) return "";
+  return q + (need ? ` | надо: ${need}` : "") + (skip ? ` | без: ${skip}` : "");
+}
+function drawPreview() {
+  const r = watchRule();
+  $("wprev").innerHTML = r ? `Бот запомнит так: <code>${esc(r)}</code>` : "Напиши, что ищем 👆";
+}
+const canSend = !!(tg && tg.sendData && tg.initData && !(tg.initDataUnsafe && tg.initDataUnsafe.query_id));
+$("watchBtn").onclick = () => { tap(); drawPreview(); document.body.classList.add("open-wsheet"); };
+$("wclose").onclick = () => document.body.classList.remove("open-wsheet");
+["wq", "wneed", "wskip"].forEach(id => $(id).oninput = drawPreview);
+$("wsave").onclick = () => {
+  const rule = watchRule();
+  if (!rule) { $("wq").focus(); return; }
+  if (canSend) {
+    try { tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
+    tg.sendData(JSON.stringify({ type: "watch", rule }));   // приложение закроется, бот ответит «👀 Слежу»
+  } else {
+    const msg = "Чтобы добавить слежку, открой приложение кнопкой «🛍 Открыть скидки» внизу чата с ботом.\n\nИли просто отправь боту:\n" + rule;
+    if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+  }
+};
 
 /* ---------- главный экран ---------- */
 $("cats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) return; tap();
@@ -412,7 +493,8 @@ $("go").onclick = () => { closeModal(); if (pendingLink) goTo(pendingLink); pend
 $("shade").addEventListener("click", () => { if (document.body.classList.contains("show-modal")) { closeModal(); pendingLink = null; } });
 
 $("list").onclick = e => { const c = e.target.closest(".card"); if (!c) return;
-  const link = c.querySelector(".open").dataset.link;
+  const alt = e.target.closest("[data-alt]");
+  const link = alt ? alt.dataset.alt : c.querySelector(".open").dataset.link;
   if (thanksShown) return goTo(link);
   markThanks(); pendingLink = link;
   $("copy").textContent = "📋 Скопировать номер";
@@ -427,6 +509,7 @@ fetch("data.json?t=" + Date.now())
     all = d.items || []; cats = d.cats || [];
     $("s1").textContent = `🔥 ${all.length} товаров со скидкой`;
     $("s2").textContent = `🕒 обновлено ${d.updated || ""}`; $("s2").style.display = "";
+    if (d.ts && Date.now() / 1000 - d.ts > 2.5 * 3600) $("tech").style.display = "block";
     draw();
   })
   .catch(() => {
