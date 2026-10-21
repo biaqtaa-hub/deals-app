@@ -438,20 +438,32 @@ function drawPreview() {
   const r = watchRule();
   $("wprev").innerHTML = r ? `Бот запомнит так: <code>${esc(r)}</code>` : "Напиши, что ищем 👆";
 }
-const canSend = !!(tg && tg.sendData && tg.initData && !(tg.initDataUnsafe && tg.initDataUnsafe.query_id));
+function copyText(s) {
+  const old = () => { const ta = document.createElement("textarea"); ta.value = s; document.body.appendChild(ta);
+    ta.select(); try { document.execCommand("copy"); } catch (e) {} ta.remove(); };
+  try { navigator.clipboard.writeText(s).catch(old); } catch (e) { old(); }
+}
+function fallbackWatch(rule) {
+  copyText(rule);
+  const msg = "📋 Слежка скопирована!\n\nВставь её в чат с ботом и отправь:\n" + rule +
+              "\n\n(Чтобы в следующий раз всё добавлялось само — открывай приложение кнопкой «🛍 Открыть скидки» внизу чата)";
+  if (tg && tg.showAlert) tg.showAlert(msg, () => { try { tg.close(); } catch (e) {} });
+  else alert(msg);
+}
 $("watchBtn").onclick = () => { tap(); drawPreview(); document.body.classList.add("open-wsheet"); };
 $("wclose").onclick = () => document.body.classList.remove("open-wsheet");
 ["wq", "wneed", "wskip"].forEach(id => $(id).oninput = drawPreview);
 $("wsave").onclick = () => {
   const rule = watchRule();
   if (!rule) { $("wq").focus(); return; }
-  if (canSend) {
+  // пробуем отправить боту; если Telegram не дал (приложение не закрылось) — копируем текст
+  let sent = false;
+  if (tg && tg.sendData) {
     try { tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
-    tg.sendData(JSON.stringify({ type: "watch", rule }));   // приложение закроется, бот ответит «👀 Слежу»
-  } else {
-    const msg = "Чтобы добавить слежку, открой приложение кнопкой «🛍 Открыть скидки» внизу чата с ботом.\n\nИли просто отправь боту:\n" + rule;
-    if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+    try { tg.sendData(JSON.stringify({ type: "watch", rule })); sent = true; } catch (e) {}
   }
+  if (!sent) return fallbackWatch(rule);
+  setTimeout(() => fallbackWatch(rule), 1200);   // если всё прошло, приложение уже закрыто и это не сработает
 };
 
 /* ---------- главный экран ---------- */
