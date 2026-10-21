@@ -133,7 +133,8 @@
     transform: translateY(105%); transition: transform .25s ease;
   }
   .open-sheet .shade, .open-wsheet .shade { opacity: 1; pointer-events: auto; }
-  .open-sheet #sheet, .open-wsheet #wsheet { transform: none; }
+  .open-sheet #sheet, .open-wsheet #wsheet, .open-msheet #msheet { transform: none; }
+  .open-msheet .shade { opacity: 1; pointer-events: auto; }
   .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
   .sheet-head h2 { margin: 0; font-size: 20px; }
   .x { width: 34px; height: 34px; border-radius: 50%; background: var(--soft); font-size: 18px; }
@@ -177,6 +178,23 @@
     margin-top: 12px; background: #fff; color: #6c4cf5; font-weight: 800; font-size: 15px;
     padding: 10px 14px; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.15);
   }
+  .hero-btns { display: flex; gap: 8px; margin-top: 12px; position: relative; z-index: 1; }
+  .hero-btns .watch-btn { margin-top: 0; flex: 1; }
+  .rule {
+    display: flex; align-items: center; gap: 10px; background: var(--soft); border-radius: 14px;
+    padding: 12px; margin-bottom: 8px; width: 100%; text-align: left; border: 2px solid transparent;
+  }
+  .rule.sel { border-color: var(--sale); background: color-mix(in srgb, var(--sale) 10%, var(--soft)); }
+  .rule .txt { flex: 1; min-width: 0; }
+  .rule .q { font-weight: 800; font-size: 16px; word-break: break-word; }
+  .rule .sub { font-size: 12.5px; color: var(--hint); margin-top: 2px; word-break: break-word; }
+  .rule .bin {
+    flex: 0 0 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 18px;
+    background: var(--card);
+  }
+  .rule.sel .bin { background: var(--sale); }
+  .btn1.danger { background: linear-gradient(135deg, #ff3d6a, #ff7a45); }
+  .btn1:disabled { opacity: .45; }
   .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
   .field b { font-size: 15px; }
   .field span { font-size: 12.5px; color: var(--hint); }
@@ -218,7 +236,10 @@
     <span class="pill" id="s1">Загружаю…</span>
     <span class="pill" id="s2" style="display:none"></span>
   </div>
-  <button class="watch-btn" id="watchBtn">➕ Следить за товаром</button>
+  <div class="hero-btns">
+    <button class="watch-btn" id="watchBtn">➕ Следить</button>
+    <button class="watch-btn" id="myBtn">📋 Мои слежки</button>
+  </div>
 </div>
 <div class="tech" id="tech"><b>🛠 Технические работы</b>Бот временно не обновляет цены, скоро всё заработает. Цены ниже могут быть устаревшими.</div>
 
@@ -275,6 +296,14 @@
   </div>
   <div class="sheet-foot" style="grid-template-columns:1fr">
     <button class="btn1" id="wsave">👀 Начать следить</button>
+  </div>
+</div>
+
+<div class="sheet" id="msheet">
+  <div class="sheet-head"><h2>📋 Мои слежки</h2><button class="x" id="mclose">✕</button></div>
+  <div class="sheet-body" id="mbody"></div>
+  <div class="sheet-foot" style="grid-template-columns:1fr">
+    <button class="btn1 danger" id="mdel" disabled>Отметь, что удалить</button>
   </div>
 </div>
 
@@ -413,7 +442,7 @@ function closeSheet() { document.body.classList.remove("open-sheet"); }
 
 $("fbtn").onclick = () => { tap(); openSheet(); };
 $("close").onclick = closeSheet;
-$("shade").onclick = () => { closeSheet(); document.body.classList.remove("open-wsheet"); };
+$("shade").onclick = () => { closeSheet(); document.body.classList.remove("open-wsheet", "open-msheet"); };
 $("sortOpts").onclick = e => { const b = e.target.closest("[data-sort]"); if (!b) return; tap();
   draft.sort = draft.sort === b.dataset.sort ? "popular" : b.dataset.sort; drawSheet(); };
 $("shopOpts").onclick = e => { const b = e.target.closest("[data-shop]"); if (!b) return; tap();
@@ -464,6 +493,63 @@ $("wsave").onclick = () => {
   }
   if (!sent) return fallbackWatch(rule);
   setTimeout(() => fallbackWatch(rule), 1200);   // если всё прошло, приложение уже закрыто и это не сработает
+};
+
+/* ---------- мои слежки ---------- */
+let myRules = null;   // null = список не передан (приложение открыто не кнопкой внизу чата)
+try {
+  const w = new URLSearchParams(location.search).get("w");
+  if (w !== null) {
+    const b64 = w.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((w.length + 3) % 4);
+    myRules = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
+  }
+} catch (e) { myRules = null; }
+let picked = new Set();
+if (myRules) $("myBtn").textContent = `📋 Мои слежки (${myRules.length})`;
+
+function ruleParts(r) {
+  const parts = r.split("|").map(s => s.trim());
+  const sub = [];
+  parts.slice(1).forEach(p => {
+    const low = p.toLowerCase();
+    if (low.startsWith("надо:")) sub.push("✅ надо: " + p.slice(5).trim());
+    else if (low.startsWith("без:")) sub.push("🚫 без: " + p.slice(4).trim());
+  });
+  return { q: parts[0], sub: sub.join(" · ") };
+}
+function drawMine() {
+  const body = $("mbody");
+  if (myRules === null) {
+    body.innerHTML = `<div class="empty"><div>📭</div>Открой приложение кнопкой<br>«🛍 Открыть скидки» внизу чата с ботом —<br>тогда здесь будут твои слежки.</div>`;
+  } else if (!myRules.length) {
+    body.innerHTML = `<div class="empty"><div>👀</div>Слежек пока нет.<br>Нажми «➕ Следить», чтобы добавить.</div>`;
+  } else {
+    body.innerHTML = `<p style="margin:2px 0 12px;color:var(--hint);font-size:14px">Нажми на слежки, которые хочешь удалить.</p>` +
+      myRules.map((r, i) => { const p = ruleParts(r);
+        return `<button class="rule${picked.has(i) ? " sel" : ""}" data-i="${i}">
+          <span class="txt"><div class="q">${esc(p.q)}</div>${p.sub ? `<div class="sub">${esc(p.sub)}</div>` : ""}</span>
+          <span class="bin">🗑</span></button>`; }).join("");
+  }
+  const n = picked.size;
+  $("mdel").disabled = !n;
+  $("mdel").textContent = n ? `🗑 Удалить выбранные (${n})` : "Отметь, что удалить";
+}
+$("myBtn").onclick = () => { tap(); picked = new Set(); drawMine(); document.body.classList.add("open-msheet"); };
+$("mclose").onclick = () => document.body.classList.remove("open-msheet");
+$("mbody").onclick = e => { const b = e.target.closest("[data-i]"); if (!b) return; tap();
+  const i = +b.dataset.i; picked.has(i) ? picked.delete(i) : picked.add(i); drawMine(); };
+$("mdel").onclick = () => {
+  const rules = [...picked].map(i => myRules[i]);
+  if (!rules.length) return;
+  let sent = false;
+  if (tg && tg.sendData) {
+    try { tg.HapticFeedback.notificationOccurred("warning"); } catch (e) {}
+    try { tg.sendData(JSON.stringify({ type: "del", rules })); sent = true; } catch (e) {}
+  }
+  const fb = () => { const msg = "Не получилось удалить из приложения 😕\nНапиши боту /list и удали через /del номер.";
+    if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg); };
+  if (!sent) return fb();
+  setTimeout(fb, 1200);   // если всё прошло, приложение уже закрыто
 };
 
 /* ---------- главный экран ---------- */
