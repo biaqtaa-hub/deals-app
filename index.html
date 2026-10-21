@@ -62,6 +62,14 @@
   }
 
   /* ---------- категории ---------- */
+  .shops { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 4px 12px 8px; }
+  .sbtn {
+    background: var(--card); box-shadow: var(--shadow); border-radius: 13px; padding: 10px 2px; font-size: 13.5px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;
+  }
+  .sbtn .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 9px; }
+  .sbtn.on { background: var(--accent); color: var(--accent-text); }
+  .sbtn.on .dot { box-shadow: 0 0 0 2px #fff; }
   .cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 12px 8px; }
   .tile {
     background: var(--card); border-radius: 16px; padding: 10px 4px 9px; box-shadow: var(--shadow);
@@ -273,6 +281,7 @@
   <button id="fbtn" class="fbtn">⚙️ Фильтры<span id="fcount" class="count" style="display:none"></span></button>
 </div>
 
+<div id="shops" class="shops"></div>
 <div id="cats" class="cats"></div>
 <div id="active" class="active"></div>
 <div id="found" class="found"></div>
@@ -408,6 +417,14 @@ function filterCount() {
   return (st.sort !== "popular") + !!st.shop + (st.disc > 0) + (st.pmin > 0 || st.pmax > 0) + st.real;
 }
 
+function drawShops() {
+  const opts = [["", "Все"], ["ozon", "Ozon"], ["wb", "WB"], ["ym", "Маркет"]];
+  $("shops").innerHTML = opts.map(([k, label]) =>
+    `<button class="sbtn${st.shop === k ? " on" : ""}" data-shop="${k}">${k ? `<span class="dot ${k}"></span>` : "🛒"}${label}</button>`).join("");
+}
+$("shops").onclick = e => { const b = e.target.closest("[data-shop]"); if (!b) return; tap();
+  st.shop = b.dataset.shop; st.shown = PAGE; draw(); };
+
 function drawCats() {
   $("cats").innerHTML = cats.map(name => {
     const m = name.match(/^(\S+)\s+(.*)$/);
@@ -449,7 +466,7 @@ function card(it, i) {
 
 function draw() {
   const l = list();
-  drawCats(); drawActive();
+  drawShops(); drawCats(); drawActive();
   $("found").textContent = `Найдено товаров: ${l.length}`;
   $("list").innerHTML = l.length ? (shownList = l.slice(0, st.shown)).map(card).join("")
     : `<div class="empty"><div>🤷</div>Ничего не нашлось.<br>Попробуй другое слово или сбрось фильтры.</div>`;
