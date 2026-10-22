@@ -62,9 +62,9 @@
   }
 
   /* ---------- категории ---------- */
-  .shops { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 4px 12px 8px; }
+  .shops { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 4px 12px 8px; }
   .sbtn {
-    background: var(--card); box-shadow: var(--shadow); border-radius: 13px; padding: 10px 2px; font-size: 13.5px; font-weight: 800;
+    background: var(--card); box-shadow: var(--shadow); border-radius: 13px; padding: 10px 2px; font-size: 12.5px; font-weight: 800;
     display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;
   }
   .sbtn .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 9px; }
@@ -111,6 +111,7 @@
   .shop.ozon { background: #005bff; }
   .shop.wb { background: linear-gradient(135deg, #cb11ab, #7b2cbf); }
   .shop.ym { background: #ffd21f; color: #1a1a1a; }
+  .shop.mm { background: #1fa35c; }
   .body { padding: 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .price { font-size: 19px; font-weight: 800; }
   .old { color: var(--hint); text-decoration: line-through; font-size: 13px; font-weight: 500; margin-left: 4px; }
@@ -184,7 +185,7 @@
   }
   .cmpi.cheaper { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
   .cmpi .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; margin-right: 4px; display: inline-block; }
-  .dot.ozon { background: #005bff; } .dot.wb { background: #cb11ab; } .dot.ym { background: #ffc400; }
+  .dot.ozon { background: #005bff; } .dot.wb { background: #cb11ab; } .dot.ym { background: #ffc400; } .dot.mm { background: #1fa35c; }
 
   /* ---------- кнопка и форма слежки ---------- */
   .watch-btn {
@@ -324,7 +325,7 @@
 <div class="sheet" id="wsheet">
   <div class="sheet-head"><h2>➕ Следить за товаром</h2><button class="x" id="wclose">✕</button></div>
   <div class="sheet-body">
-    <p style="margin:2px 0 14px;color:var(--hint);font-size:14px">Бот будет искать этот товар на Ozon, WB и Яндекс Маркете и пришлёт сообщение, когда цена сильно упадёт.</p>
+    <p style="margin:2px 0 14px;color:var(--hint);font-size:14px">Бот будет искать этот товар на Ozon, WB, Яндекс Маркете и Мегамаркете и пришлёт сообщение, когда цена сильно упадёт.</p>
     <label class="field"><b>Что ищем? *</b><span>Например: playstation 5, пылесос dyson</span>
       <input id="wq" placeholder="Название товара"></label>
     <label class="field"><b>Надо (необязательно)</b><span>Хотя бы одно из этих слов должно быть в названии. Через запятую.</span>
@@ -378,12 +379,12 @@ if ((tg && tg.colorScheme === "dark") || (!tg && matchMedia("(prefers-color-sche
 const SORTS = [["popular", "⭐ Популярные"], ["cheap", "💰 Дешёвые"], ["expensive", "💎 Дорогие"],
                ["disc_big", "🔥 Большая скидка"], ["disc_small", "🏷 Маленькая скидка"], ["real_big", "✅ Сильнее упали"]];
 const DISCS = [[0, "Любая"], [20, "от 20%"], [50, "от 50%"], [70, "от 70%"]];
-const SHOPS = { ozon: "Ozon", wb: "WB", ym: "Маркет" };
-const SHOP_FULL = { ozon: "Ozon", wb: "Wildberries", ym: "Яндекс Маркет" };
-const SHOP_TAG = { ozon: "OZON", wb: "WB", ym: "МАРКЕТ" };
-const SHOP_IN = { ozon: "Ozon", wb: "WB", ym: "Маркете" };
-const SHOP_FULL_IN = { ozon: "Ozon", wb: "Wildberries", ym: "Яндекс Маркете" };
-const SHOP_OPTS = [["", "🛒 Все"], ["ozon", "🔵 Ozon"], ["wb", "🟣 Wildberries"], ["ym", "🟡 Яндекс Маркет"]];
+const SHOPS = { ozon: "Ozon", wb: "WB", ym: "Маркет", mm: "Мега" };
+const SHOP_FULL = { ozon: "Ozon", wb: "Wildberries", ym: "Яндекс Маркет", mm: "Мегамаркет" };
+const SHOP_TAG = { ozon: "OZON", wb: "WB", ym: "МАРКЕТ", mm: "МЕГА" };
+const SHOP_IN = { ozon: "Ozon", wb: "WB", ym: "Маркете", mm: "Мега" };
+const SHOP_FULL_IN = { ozon: "Ozon", wb: "Wildberries", ym: "Яндекс Маркете", mm: "Мегамаркете" };
+const SHOP_OPTS = [["", "🛒 Все"], ["ozon", "🔵 Ozon"], ["wb", "🟣 Wildberries"], ["ym", "🟡 Яндекс Маркет"], ["mm", "🟢 Мегамаркет"]];
 const shopOf = it => it.s || "ozon";
 const SHORT = { "Электроника": "Электроника", "Игры и приставки": "Игры", "Бытовая техника": "Техника",
                 "Детские товары": "Детям", "Товары для дома": "Для дома", "Слежки": "Мои слежки" };
@@ -423,7 +424,7 @@ function filterCount() {
 }
 
 function drawShops() {
-  const opts = [["", "Все"], ["ozon", "Ozon"], ["wb", "WB"], ["ym", "Маркет"]];
+  const opts = [["", "Все"], ["ozon", "Ozon"], ["wb", "WB"], ["ym", "Маркет"], ["mm", "Мега"]];
   $("shops").innerHTML = opts.map(([k, label]) =>
     `<button class="sbtn${st.shop === k ? " on" : ""}" data-shop="${k}">${k ? `<span class="dot ${k}"></span>` : "🛒"}${label}</button>`).join("");
 }
