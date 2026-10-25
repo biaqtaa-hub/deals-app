@@ -117,6 +117,7 @@
   .old { color: var(--hint); text-decoration: line-through; font-size: 13px; font-weight: 500; margin-left: 4px; }
   .real.win { color: #b07800; background: rgba(255, 196, 0, .16); }
   html.dark .real.win { color: #ffc93d; }
+  .badge.real-badge { background: linear-gradient(135deg, #12a150, #2fd07a); box-shadow: 0 3px 10px rgba(18,161,80,.35); }
   .badge.gold { background: linear-gradient(135deg, #ffb300, #ff8a00); box-shadow: 0 3px 10px rgba(255,160,0,.35); }
   .real {
     align-self: flex-start; font-size: 12px; font-weight: 800; color: var(--green);
@@ -166,6 +167,8 @@
   .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .2s; }
   .switch.on .knob { background: var(--green); }
   .switch.on .knob::after { left: 21px; }
+  .disc-hint { font-size: 12.5px; color: var(--hint); margin: -4px 0 8px; }
+  .disc-hint b { color: var(--green); }
   .sheet-foot { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; padding: 10px 16px 18px; border-top: 1px solid var(--line); }
   .btn2 { border-radius: 14px; padding: 14px; font-weight: 700; background: var(--soft); }
   .btn1 { border-radius: 14px; padding: 14px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #6c4cf5, #c045e0); }
@@ -303,18 +306,19 @@
     <div class="opts" id="sortOpts"></div>
     <div class="sec">Магазин</div>
     <div class="opts" id="shopOpts"></div>
+    <div class="sec">Проверка скидки</div>
+    <button class="switch" id="realSw">
+      <span>✅ Только реальные скидки<small>Цена реально упала или дешевле, чем в других магазинах</small></span>
+      <span class="knob"></span>
+    </button>
     <div class="sec">Скидка</div>
+    <div class="disc-hint" id="discHint"></div>
     <div class="opts" id="discOpts"></div>
     <div class="sec">Цена, ₽</div>
     <div class="range">
       <label>от <input id="pmin" type="number" inputmode="numeric" placeholder="0"></label>
       <label>до <input id="pmax" type="number" inputmode="numeric" placeholder="любая"></label>
     </div>
-    <div class="sec">Проверка скидки</div>
-    <button class="switch" id="realSw">
-      <span>✅ Только реальные скидки<small>Бот сам видел, что цена упала</small></span>
-      <span class="knob"></span>
-    </button>
   </div>
   <div class="sheet-foot">
     <button class="btn2" id="clear">Сбросить</button>
@@ -387,7 +391,9 @@ const SHOP_FULL_IN = { ozon: "Ozon", wb: "Wildberries", ym: "Яндекс Мар
 const SHOP_OPTS = [["", "🛒 Все"], ["ozon", "🔵 Ozon"], ["wb", "🟣 Wildberries"], ["ym", "🟡 Яндекс Маркет"], ["mm", "🟢 Мегамаркет"]];
 const shopOf = it => it.s || "ozon";
 const SHORT = { "Электроника": "Электроника", "Игры и приставки": "Игры", "Бытовая техника": "Техника",
-                "Детские товары": "Детям", "Товары для дома": "Для дома", "Слежки": "Мои слежки" };
+                "Детские товары": "Детям", "Товары для дома": "Для дома", "Слежки": "Мои слежки",
+                "Одежда и обувь": "Одежда", "Красота и здоровье": "Красота", "Спорт и отдых": "Спорт",
+                "Авто и инструменты": "Авто" };
 const PAGE = 40;
 const fresh = () => ({ cat: null, shop: "", sort: "popular", disc: 0, pmin: 0, pmax: 0, real: false, q: "", shown: PAGE });
 let all = [], cats = [], st = fresh();
@@ -396,24 +402,26 @@ const $ = id => document.getElementById(id);
 const money = n => n.toLocaleString("ru-RU") + " ₽";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const tap = () => { try { tg.HapticFeedback.selectionChanged(); } catch (e) {} };
-const best = it => Math.max(it.d, it.r, it.v || 0);   // скидка продавца, реальное падение или выгода против других магазинов
+const best = it => Math.max(it.d, it.r, it.v || 0);
+// при «Только реальные» считаем только то, на сколько цена реально упала (+ выгода против других магазинов)
+const discOf = (it, real = st.real) => real ? Math.max(it.r, it.v || 0) : best(it);   // скидка продавца, реальное падение или выгода против других магазинов
 
 function list() {
   const words = st.q.toLowerCase().split(/\s+/).filter(Boolean);
   const out = all.filter(it =>
     (!st.cat || it.c === st.cat) &&
     (!st.shop || shopOf(it) === st.shop) &&
-    (!st.disc || best(it) >= st.disc) &&
+    (!st.disc || discOf(it) >= st.disc) &&
     (!st.pmin || it.p >= st.pmin) &&
     (!st.pmax || it.p <= st.pmax) &&
-    (!st.real || it.r >= 10) &&
+    (!st.real || discOf(it, true) >= 10) &&
     words.every(w => it.n.toLowerCase().includes(w)));
   const by = {
     popular: (a, b) => a.k - b.k,
     cheap: (a, b) => a.p - b.p,
     expensive: (a, b) => b.p - a.p,
-    disc_big: (a, b) => best(b) - best(a),
-    disc_small: (a, b) => best(a) - best(b),
+    disc_big: (a, b) => discOf(b) - discOf(a),
+    disc_small: (a, b) => discOf(a) - discOf(b),
     real_big: (a, b) => b.r - a.r,
   }[st.sort];
   return out.sort(by);
@@ -443,7 +451,7 @@ function drawActive() {
   const t = [];
   if (st.sort !== "popular") t.push(["sort", SORTS.find(s => s[0] === st.sort)[1]]);
   if (st.shop) t.push(["shop", SHOP_OPTS.find(s => s[0] === st.shop)[1]]);
-  if (st.disc) t.push(["disc", `Скидка от ${st.disc}%`]);
+  if (st.disc) t.push(["disc", st.real ? `Реально дешевле на ${st.disc}%+` : `Скидка от ${st.disc}%`]);
   if (st.pmin || st.pmax) t.push(["price", st.pmin && st.pmax ? `${money(st.pmin)} – ${money(st.pmax)}` : st.pmax ? `До ${money(st.pmax)}` : `От ${money(st.pmin)}`]);
   if (st.real) t.push(["real", "✅ Только реальные"]);
   $("active").innerHTML = t.map(([k, label]) => `<button class="tag" data-off="${k}">${esc(label)} <b>✕</b></button>`).join("");
@@ -454,6 +462,11 @@ function drawActive() {
 
 let shownList = [];
 function badge(it) {
+  if (st.real) {                       // режим «Только реальные» — на плашке реальная скидка
+    if (it.r >= 10 && it.r >= (it.v || 0)) return `<span class="badge real-badge">✅ −${it.r}%</span>`;
+    if (it.v >= 10) return `<span class="badge gold">🏆 −${it.v}%</span>`;
+    return "";
+  }
   const d = Math.max(it.d, it.r);
   if (d > 0) return `<span class="badge">−${d}%</span>`;
   if (it.v >= 10) return `<span class="badge gold">🏆 −${it.v}%</span>`;
@@ -496,6 +509,9 @@ function drawSheet() {
   $("discOpts").innerHTML = DISCS.map(([v, label]) =>
     `<button class="opt${draft.disc === v ? " on" : ""}" data-disc="${v}">${label}</button>`).join("");
   $("realSw").className = "switch" + (draft.real ? " on" : "");
+  $("discHint").innerHTML = draft.real
+    ? "Считается <b>реальная</b> скидка — насколько цена упала на самом деле"
+    : "Считается скидка, которую пишет магазин. Включи «Только реальные» внизу, чтобы считать реальную";
   const saved = st; st = draft; const n = list().length; st = saved;
   $("apply").textContent = `Показать ${n} товаров`;
 }
