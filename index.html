@@ -708,7 +708,7 @@ function openDetail(it) {
       <span class="shop ${here}">${SHOP_TAG[here] || ""}</span></div>
     <div class="dname">${esc(it.n)}</div>
     <div class="dprice">${money(it.p)}${old ? `<span class="old">${money(old)}</span>` : ""}</div>
-    ${it.r >= 10 ? `<span class="real">✅ Бот видел: цена реально упала на ${it.r}%</span>` : ""}
+    ${it.r >= 10 ? `<div class="real" style="display:block;line-height:1.4;padding:8px 10px;border-radius:12px;margin-bottom:6px">✅ Реально дешевле на ${it.r}%<br><span style="font-weight:500;opacity:.85">обычно не меньше ${money(it.u)} — с учётом всех магазинов</span></div>` : ""}
     ${verdict}
     <div class="sec">Цены в магазинах</div>
     ${others.length ? rows : `<div class="nocmp">🔎 Такой же товар в других магазинах пока не нашёлся.<br><small>Бот сравнивает по названию. Если продавец не указал модель — сравнить не получится.</small></div>`}`;
