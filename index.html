@@ -697,16 +697,16 @@ function openDetail(it) {
     verdict = `<div class="verdict win">🏆 Здесь дешевле всего! Экономия до ${money(Math.max(...others.map(m => m.p)) - it.p)}</div>`;
   else if (cheaper.length)
     verdict = `<div class="verdict lose">💡 В ${SHOP_FULL_IN[cheaper[0].s]} дешевле на ${money(it.p - cheaper[0].p)}</div>`;
-  const row = (s, p, link, isHere, name) => {
+  const row = (s, p, link, isHere, name, byPhoto) => {
     const diff = p - it.p;
     const note = isHere ? `<small>этот товар</small>` : (diff > 0 ? `<small class="up">+${money(diff)} дороже</small>`
                  : diff < 0 ? `<small class="down">−${money(-diff)} дешевле</small>` : `<small>та же цена</small>`);
     return `<button class="prow${isHere ? " here" : ""}" data-go="${esc(link)}">
-      <span class="dot ${s}"></span><span class="pn">${SHOP_FULL[s] || s}${isHere ? "<small>вы смотрите здесь</small>" : `<small class="mname">${esc(name || "такой же товар")}</small>`}</span>
+      <span class="dot ${s}"></span><span class="pn">${SHOP_FULL[s] || s}${isHere ? "<small>вы смотрите здесь</small>" : `<small class="mname">${byPhoto ? "📷 найден по фото · " : ""}${esc(name || "такой же товар")}</small>`}</span>
       <span class="pp">${money(p)}${note}</span></button>`;
   };
-  const rows = [{ s: here, p: it.p, l: it.l, here: true }, ...others.map(m => ({ s: m.s, p: m.p, l: m.l, here: false, n: m.n }))]
-    .sort((a, b) => a.p - b.p).map(r => row(r.s, r.p, r.l, r.here, r.n)).join("");
+  const rows = [{ s: here, p: it.p, l: it.l, here: true }, ...others.map(m => ({ s: m.s, p: m.p, l: m.l, here: false, n: m.n, f: m.f }))]
+    .sort((a, b) => a.p - b.p).map(r => row(r.s, r.p, r.l, r.here, r.n, r.f)).join("");
   $("dbody").innerHTML = `
     <div class="dphoto">${it.i ? `<img src="${esc(it.i)}" alt="">` : ""}
       ${badge(it)}
